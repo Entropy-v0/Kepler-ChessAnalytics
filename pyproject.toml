@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kepler-chessanalitic"
+version = "0.1.0"
+description = "Herramienta inteligente de análisis de datos para jugadores de ajedrez de la FIDE"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas",
+    "numpy",
+    "pandera",
+    "pydantic",
+    "scikit-learn",
+    "requests",
+    "sqlalchemy",
+    "tqdm",
+    "loguru",
+    "python-dotenv"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ipykernel"
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
