@@ -115,3 +115,6 @@ data/external/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Research, study materials, and conceptual docs
+research/
