@@ -1,5 +1,5 @@
-from config.settings import setup_environment
-from controllers.ingestion_controller import IngestionController
+from src.config.settings import setup_environment
+from src.controllers.ingestion_controller import IngestionController
 
 def main():
     setup_environment()

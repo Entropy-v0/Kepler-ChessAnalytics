@@ -1,9 +1,9 @@
 from loguru import logger
-from ingestion.fideDownloader import FideDownloader
-from ingestion.dataParser import DataParser
-from ingestion.parquetLoader import ParquetLoader
-from models.player import FidePlayer
-from config.settings import FIDE_DOWNLOAD_URL, INTERIM_PARQUET_PATH
+from src.ingestion.fideDownloader import FideDownloader
+from src.ingestion.dataParser import DataParser
+from src.ingestion.parquetLoader import ParquetLoader
+from src.models.player import FidePlayer
+from src.config.settings import FIDE_DOWNLOAD_URL, INTERIM_PARQUET_PATH
 
 class IngestionController:
     """Controlador principal para el pipeline de ingesta de datos de la FIDE."""

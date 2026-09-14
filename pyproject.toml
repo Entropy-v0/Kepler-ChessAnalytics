@@ -27,9 +27,14 @@ dev = [
     "ipykernel"
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
+

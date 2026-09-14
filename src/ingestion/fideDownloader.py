@@ -3,7 +3,7 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from config.settings import FIDE_DOWNLOAD_URL, DATA_RAW_DIR
+from src.config.settings import FIDE_DOWNLOAD_URL, DATA_RAW_DIR
 
 
 class FideDownloader:
