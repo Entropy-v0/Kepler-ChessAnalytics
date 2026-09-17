@@ -17,7 +17,10 @@ class UnivariateVisualizer:
         """Genera un histograma y devuelve la figura y el eje."""
         fig, ax = plt.subplots(figsize=figsize)
         
-        sns.histplot(self.data, kde=True, bins='auto', color='royalblue', ax=ax)
+        sns.histplot(self.data, kde=True, bins=30, color='royalblue', ax=ax)
+        ax.axvline(self.data.mean(), color='red', linestyle='--', label='Media')
+        ax.axvline(self.data.median(), color='green', linestyle='-', label='Mediana')
+        ax.legend()
         
         ax.set_title(f"Histograma y KDE - {self.title}")
         ax.set_xlabel("Valor")
@@ -49,7 +52,7 @@ class UnivariateVisualizer:
         ax_box.set_xlabel('') 
         ax_box.set_title(f"Análisis Completo de Distribución - {self.title}")
         
-        sns.histplot(self.data, kde=True, ax=ax_hist, color='royalblue', bins='auto')
+        sns.histplot(self.data,kde=True, ax=ax_hist, color='royalblue', bins=30)
         ax_hist.set_xlabel("Valor")
         ax_hist.set_ylabel("Frecuencia")
         

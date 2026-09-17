@@ -118,3 +118,6 @@ Thumbs.db
 
 # Research, study materials, and conceptual docs
 research/
+
+# Auditorías técnicas (documentos internos, no versionados)
+doc/auditorias/

@@ -69,7 +69,7 @@ class UnivariateAnalyzer:
         outliers = self.data[(self.data < limite_inferior) | (self.data > limite_superior)]
         
         return {
-            "limite_inferior": limite_inferior,
+            "limite_inferior": max(0,limite_inferior),
             "limite_superior": limite_superior,
             "cantidad_outliers": len(outliers),
             "porcentaje_outliers": (len(outliers) / len(self.data)) * 100
@@ -90,11 +90,6 @@ class UnivariateAnalyzer:
         Devuelve un resumen consolidado con todos los hallazgos estadísticos y estado de limpieza.
         """
         reporte_crudo = {
-            "estado_datos": {
-                "total_registros_originales": self.total_original,
-                "nulos_eliminados": self.valores_nulos,
-                "porcentaje_nulos": self.porcentaje_nulos
-            },
             "tendencia_central": self.get_central_tendency(),
             "dispersion": self.get_dispersion_metrics(),
             "percentiles": self.get_percentiles(),
