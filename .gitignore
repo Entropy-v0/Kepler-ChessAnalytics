@@ -100,6 +100,7 @@ data/raw/
 data/processed/
 data/interim/
 data/external/
+data/dataWeb/
 *.csv
 *.tsv
 *.parquet

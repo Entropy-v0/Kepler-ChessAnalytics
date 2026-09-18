@@ -1,0 +1,9 @@
+[theme]
+# ── Paleta clara y profesional ─────────────────────────────────────────────────
+primaryColor             = "#1E3A5F"   # Azul marino: botones, sliders, links activos
+backgroundColor          = "#FFFFFF"   # Blanco puro: fondo principal
+secondaryBackgroundColor = "#F0F4F8"   # Gris azulado claro: sidebar y cards
+textColor                = "#1C2333"   # Carbón oscuro: texto principal
+
+# ── Tipografía ────────────────────────────────────────────────────────────────
+font = "sans serif"

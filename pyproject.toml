@@ -32,6 +32,11 @@ db = [
 ml = [
     "scikit-learn"
 ]
+app = [
+    "streamlit>=1.35",
+    "plotly>=5.20",
+    "pyarrow",
+]
 
 [tool.setuptools]
 package-dir = {"" = "."}
