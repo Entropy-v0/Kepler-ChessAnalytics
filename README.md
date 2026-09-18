@@ -1,234 +1,192 @@
-# Kepler ChessAnalitic
+# ♟️ Kepler ChessAnalytics
 
-> **Herramienta y pipeline de análisis de datos para el padrón oficial de jugadores de ajedrez de la FIDE.**
+> **Plataforma de Inteligencia de Datos & Dashboard Analítico de Alto Rendimiento sobre el Padrón Oficial de la FIDE (~1.9 Millones de Jugadores).**
 
-Este proyecto tiene como objetivo procesar, estructurar y analizar las listas oficiales de jugadores publicadas periódicamente por la **Federación Internacional de Ajedrez (FIDE)** (~2 millones de registros). 
-
-A diferencia de análisis superficiales basados en tablas estáticas preprocesadas, **Kepler ChessAnalitic** aborda el ciclo completo: desde la ingesta en *streaming* de bajo consumo de memoria RAM ($O(1)$) del XML crudo, hasta la exploración estadística profunda de demografía, ritmos de juego (Clásico, Rápido, Blitz) y distribución de títulos federativos.
-
----
-
-## 1. Estado Actual del Proyecto
-
-Para mantener una visión pragmática y libre de sobredimensionamiento ("sin humo"), el estado actual de los componentes del repositorio se resume en la siguiente matriz:
-
-| Componente | Estado | Descripción técnica real |
-| :--- | :---: | :--- |
-| **Ingesta Streaming (`src/ingestion`)** | **Operativo** | Descarga en bloques por red y parseo iterativo con `iterparse` + `elem.clear()` de bajo consumo de RAM (< 150 MB). Escritura columnar en chunks de 50.000 filas hacia formato Parquet con reemplazo atómico. |
-| **Validación de Datos (`src/models`)** | **Operativo** | Modelo `FidePlayer` en Pydantic v2 que sanea strings vacíos a `None` y garantiza tipado estricto en identificadores, ratings y años de nacimiento. |
-| **Capa de Datos (`data/`)** | **Operativo** | Esquema estructurado en `raw/` (ZIP original), `interim/` (bruto ~1.9M registros) y `processed/` (datasets limpios: global y activos). |
-| **Limpieza y Curaduría (`notebooks/00`)** | **Operativo** | Depuración de nulos en títulos (`nt`), imputación de estados de actividad (`flag`), tratamiento de anomalías en año de nacimiento (`>= 1920`) y cálculo de variable `edad`. |
-| **Exploración General (`notebooks/01`)** | **Operativo** | Densidad de ratings (KDE comparativo), concentración por federaciones (Top 15 liderado por IND, RUS, FRA, ESP) y tablas cruzadas de cuota mundial de títulos. |
-| **Análisis Demográfico (`notebooks/02`)** | **Operativo** | Caracterización de brecha de género (~90% M / ~10% F), análisis por cohortes juveniles (Sub-8 a Sub-20) y cruce federativo. |
-| **Módulo Estadístico (`src/analytics`)** | **En desarrollo** | Prototipo inicial de `UnivariateAnalyzer` con métricas de tendencia central, dispersión y forma (curtosis y asimetría). Métodos de normalidad y outliers pendientes. |
-| **Históricos Temporales (Deltas / CDC)** | **Diseñado** | Conceptualizado a nivel de arquitectura en `research/ARQUITECTURA_Y_ESCALABILIDAD.md` para evolucionar de snapshot único a series de tiempo particionadas. |
-| **Testing Automatizado (`tests/`)** | **Pendiente** | Estructura preparada con configuración en `pyproject.toml`, pero sin suite de pruebas unitarias implementadas aún. |
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit 1.37+](https://img.shields.io/badge/Streamlit-1.37+-FF4B4B.svg)](https://streamlit.io/)
+[![Architecture](https://img.shields.io/badge/Architecture-Medallion%20Lakehouse-success.svg)](#2-arquitectura-del-sistema-medallion-lakehouse)
+[![Data Engine](https://img.shields.io/badge/Storage-Apache%20Parquet-orange.svg)](https://parquet.apache.org/)
+[![Tests](https://img.shields.io/badge/Tests-8%2F8%20Passing-brightgreen.svg)](#6-suite-de-pruebas-automatizadas)
+[![RAM Footprint](https://img.shields.io/badge/RAM%20Peak-~233%20MB-green.svg)](#4-optimizaciones-de-alto-rendimiento-sprints-14)
 
 ---
 
-## 2. Arquitectura del Pipeline de Ingesta
+## 1. Visión General del Proyecto
 
-El desafío técnico principal del padrón de la FIDE radica en que el archivo comprimido oficial (`players_list_xml.zip`) supera los cientos de megabytes descomprimidos en un único archivo XML con casi 2 millones de nodos `<player>`. Cargar este árbol completo en memoria con parsers tradicionales colapsaría la memoria de cualquier equipo de trabajo estándar.
+Cada mes, la **Federación Internacional de Ajedrez (FIDE)** publica el padrón oficial de jugadores federados en el mundo: un archivo XML monolítico de casi **2 millones de registros** que supera 1.8 GB sin comprimir. La gran mayoría de análisis existentes se limitan a muestras reducidas o dependen de procesos manuales lentos que saturan la memoria del servidor.
+
+**Kepler ChessAnalytics** resuelve este desafío construyendo una solución *end-to-end* de nivel productivo:
+1. **Ingesta en Streaming de Memoria Constante ($O(1)$):** Procesa el XML crudo en fragmentos de red con consumo de memoria menor a 150 MB sin volcar gigabytes de texto plano a disco.
+2. **Arquitectura Medallion Lakehouse (`Bronze -> Silver -> Gold`):** Canaliza las etapas de limpieza, validación estricta con Pydantic v2, enriquecimiento de variables y generación determinista de **Data Marts analíticos**.
+3. **Frontend Reactivo y Ligero en Streamlit:** Dashboard multipágina desacoplado del procesamiento pesado que opera consumiendo únicamente **~233 MB de RAM máxima**, lo que permite desplegarlo de forma completamente gratuita en servicios cloud de recursos limitados (como Streamlit Community Cloud o Render).
+
+---
+
+## 2. Arquitectura del Sistema (Medallion Lakehouse)
+
+El sistema opera bajo un principio rector estricto:
+> *"Los Notebooks exploran e investigan; el Motor ETL (`src/`) ejecuta y produce; la Aplicación Web (`app/`) visualiza."*
 
 ```mermaid
 flowchart TD
-    A["FIDE Server\n(players_list_xml.zip)"] -->|"Streaming por bloques (8 KB)\nRequests + Tqdm"| B["FideDownloader\ndata/raw/"]
-    B -->|"Lectura en flujo de ZIP sin descomprimir a disco"| C["DataParser\n(ET.iterparse + elem.clear)"]
-    C -->|"Diccionarios de jugadores\nMemoria RAM O(1) < 150 MB"| D["Validación Pydantic\n(FidePlayer Model)"]
-    D -->|"Chunks de 50.000 registros"| E["ParquetLoader\nPyArrow Writer (.tmp)"]
-    E -->|"Reemplazo atómico"| F[("data/interim/\nfide_players_bruto.parquet\n(~1.9M filas / ~46 MB)")]
+    subgraph Bronze["1. Capa Bronce (Raw & Ingestion)"]
+        FIDE["FIDE Server\n(players_list_xml.zip)"] -->|"Streaming por bloques (8 KB)\nRequests + Tqdm"| RAW[("data/raw/\nplayers_list_xml.zip")]
+        RAW -->|"Lectura iterativa en stream\nET.iterparse + elem.clear()"| PARSER["DataParser\n(Memoria O(1) < 150 MB)"]
+        PARSER -->|"Validación Pydantic v2"| CHUNKS["Chunks 50k registros"]
+        CHUNKS -->|"Escritura atómica"| INTERIM[("data/interim/\nfide_players_bruto.parquet\n(~1.9M registros)")]
+    end
+
+    subgraph Silver["2. Capa Plata (Curated Master)"]
+        INTERIM --> CLEANER["DataCleaner\n(Tratamiento de nulos, flags, centinelas)"]
+        CLEANER --> FEATURES["FeatureBuilder\n(Categorías FIDE, cohortes, percentiles)"]
+        FEATURES --> PROCESSED[("data/processed/\nfide_players_active.parquet (~437K)\nfide_players_all.parquet (~776K)")]
+    end
+
+    subgraph Gold["3. Capa Oro (Data Marts - 1.03 MB)"]
+        PROCESSED --> MARTS_CTRL["MartsController\n(Pre-agregación determinista)"]
+        MARTS_CTRL --> MARTS[("data/marts/*.parquet\n(19 Data Marts especializados)")]
+    end
+
+    subgraph Presentation["4. Capa de Presentación (Streamlit UI)"]
+        MARTS --> LOAD["DataLoader\n(@st.cache_data)"]
+        LOAD --> APP["Streamlit Multi-Page App\n(Consumo RAM: ~233 MB)"]
+    end
 ```
 
-### Principios de Ingeniería Aplicados:
-1. **Consumo de Memoria Constante ($O(1)$):** El parser no descomprime el archivo ZIP en disco ni carga el árbol DOM completo en RAM; recorre los eventos de cierre (`end`) y libera inmediatamente los elementos del árbol XML (`elem.clear()`).
-2. **Escritura en Bloques Acotados:** `ParquetLoader` acumula fragmentos de 50.000 filas en memoria antes de persistirlos en disco mediante `pyarrow.parquet.ParquetWriter`.
-3. **Persistencia Atómica:** Se escribe en un archivo temporal (`.tmp`) que solo reemplaza el destino final si todo el flujo finaliza sin errores, previniendo parquets corruptos ante interrupciones.
+### Capas de Almacenamiento y Gobernanza
+
+| Capa | Directorio | Descripción | Formato / Tamaño |
+| :--- | :--- | :--- | :---: |
+| **Bronce (Raw)** | `data/raw/` | Archivo ZIP original descargado de la FIDE. Inmutable. | `.zip` (~58 MB) |
+| **Plata (Interim)** | `data/interim/` | Snapshot bruto validado por modelos Pydantic. | `.parquet` (~46 MB) |
+| **Master (Processed)** | `data/processed/` | Padrón curado, con tipos corregidos y segmentado (Total vs. Activo). | `.parquet` (~67 MB) |
+| **Oro (Marts)** | `data/marts/` | **19 Data Marts agregados**, listos para servir consultas a la UI en $<5$ ms. | `.parquet` (**1.03 MB**) |
 
 ---
 
-## 3. Estructura del Repositorio
+## 3. Ventanas de Descubrimiento (Aplicación Web)
+
+La aplicación web (`app/main.py`) cuenta con 6 módulos interactivos organizados temáticamente:
+
+```text
+app/pages/
+├── 00_inicio.py               # Portada, resumen metodológico y cifras hero del padrón mundial
+├── 01_panorama_global.py      # Concentración federativa, mapa coroplético Robinson y tablas de cuota
+├── 02_distribucion_elo.py     # Densidades KDE por ritmo, percentiles y estructura de títulos
+├── 03_demografia_genero.py    # Brecha de género (90/10), pirámide etaria y rankings de paridad
+├── 04_cohortes_juveniles.py   # Canteras formativas (Sub-8 a Sub-20) y curvas biológicas de Elo
+└── 05_venezuela.py            # Radiografía nacional, buscador reactivo y cuadro de honor
+```
+
+* **00 — Inicio:** KPIs globales del padrón (Total de jugadores, jugadores activos, países representados).
+* **01 — Panorama Global:** Top 15 de federaciones por volumen de jugadores (India, Rusia, Francia, España liderando) con proyección cartográfica Robinson y barras de progreso nativas.
+* **02 — Distribución de Elo:** Análisis multimodal comparando Clásico, Rápido y Blitz; histograma precalculado en intervalos de 20 puntos y distribución piramidal de títulos internacionales (GM, IM, FM, CM).
+* **03 — Demografía y Género:** Exploración de la brecha estructural de participación femenina (~10.8 % mundial), pirámide etaria quinquenal interactiva y federaciones con mayor paridad relativa.
+* **04 — Cohortes Juveniles:** Análisis del semillero deportivo en categorías Sub-8 hasta Sub-20, curvas de maduración de rating y matrices de canteras mundiales.
+* **05 — Venezuela:** Estudio de caso nacional sobre los 3.055 jugadores federados en Venezuela, desglose de maestros titulados y cuadro de honor interactivo con filtros independientes.
+
+---
+
+## 4. Estructura del Repositorio
 
 ```text
 Kepler-ChessAnalitic/
+├── app/                         # Frontend Streamlit desacoplado
+│   ├── assets/                  # Recursos estáticos
+│   ├── components/              # Componentes de UI (charts.py, kpis.py, theme.py)
+│   ├── pages/                   # Páginas multi-página (00 a 05)
+│   ├── service/                 # Servicios DAL consumidores de Capa Oro
+│   └── main.py                  # Entrypoint de Streamlit
 ├── data/
-│   ├── raw/                 # Archivo descargado original (players_list_xml.zip)
-│   ├── interim/             # Snapshot bruto consolidado (fide_players_bruto.parquet)
-│   └── processed/           # Conjuntos depurados listos para analítica
-│       ├── fide_players_all.parquet       # Jugadores con rating > 0 y fecha válida
-│       └── fide_players_active.parquet    # Jugadores activos (excluye flag 'i'/'wi', edad <= 95)
-├── notebooks/
-│   ├── 00-limpieza.ipynb                  # Pipeline exploratorio de limpieza y segmentación
-│   ├── 01-eda_general.ipynb               # Densidades globales de Elo, federaciones y títulos
-│   └── 02-demografia_edad_genero.ipynb    # Pirámides, cohortes juveniles y brecha de género
-├── research/                # Documentación estratégica, metodológica y técnica
-│   ├── ARQUITECTURA_Y_ESCALABILIDAD.md    # Diseño conceptual de históricos, CDC y deltas
-│   ├── EVALUACION_NOTEBOOKS_Y_PREGUNTAS_INVESTIGACION.md # Banco de 6 ejes de investigación
-│   └── GUIA_02_DEMOGRAFIA_EDAD_GENERO.md  # Checklist metodológica del análisis demográfico
-├── src/
-│   ├── analytics/           # Módulos estadísticos (UnivariateAnalyzer)
-│   ├── config/              # Variables de entorno y rutas del sistema (settings.py)
-│   ├── controllers/         # Orquestación del pipeline (ingestion_controller.py)
-│   ├── ingestion/           # Componentes ETL (Downloader, Parser, ParquetLoader)
-│   ├── models/              # Esquemas de datos Pydantic (player.py)
-│   └── main.py              # Punto de entrada de ejecución de la ingesta
-├── scripts/                 # Scripts de soporte y tareas batch (preparado)
-├── tests/                   # Suite de pruebas con pytest (preparado)
-├── .env                     # Variables de configuración local (URL_DESCARGA)
-├── pyproject.toml           # Dependencias y configuración del paquete
-└── README.md                # Documentación principal
+│   ├── raw/                     # [Bronce] ZIP oficial FIDE
+│   ├── interim/                 # [Plata] Parquet bruto tipado
+│   ├── processed/               # [Master] Datasets limpios
+│   └── marts/                   # [Oro] 19 Data Marts (< 1.1 MB total)
+├── docs/                        # Guías de arquitectura, optimización y migración
+├── notebooks/                   # Entorno de exploración e hipótesis (EDA)
+├── research/                    # Bitácoras de ingeniería, diagnósticos y benchmarks
+├── src/                         # Motor ETL Medallion Lakehouse
+│   ├── config/                  # Constantes y variables de configuración
+│   ├── controllers/             # Orquestadores de procesamiento y marts
+│   ├── ingestion/               # Downloader, Streaming Parser y Writer
+│   ├── marts/                   # Constructores especializados de Capa Oro
+│   ├── models/                  # Esquemas y validadores Pydantic
+│   ├── processing/              # Limpiador y constructor de features
+│   └── main.py                  # CLI unificada de ejecución ETL
+├── tests/                       # Suite automatizada con pytest
+├── requirements.txt             # Dependencias optimizadas para despliegue Cloud
+├── pyproject.toml               # Configuración del paquete y herramientas
+└── README.md                    # Este documento
 ```
 
 ---
 
-## 4. Capas de Datos y Diccionario de Variables
+## 5. Suite de Pruebas Automatizadas
 
-Los datos evolucionan a través de tres niveles de refinamiento:
+El proyecto cuenta con pruebas de integración y validación que cubren el pipeline de datos, los servicios analíticos y los contratos visuales:
 
-### 4.1. Archivo Bruto (`data/interim/fide_players_bruto.parquet`)
-Contiene los ~1.91 millones de registros del padrón mundial sin filtros, tal como son emitidos por la FIDE.
-
-### 4.2. Conjuntos Procesados (`data/processed/`)
-* **`fide_players_all.parquet` (~776.000 filas):** Jugadores con al menos un rating mayor a cero (`rating`, `rapid_rating` o `blitz_rating`) y año de nacimiento válido (`birthday >= 1920`).
-* **`fide_players_active.parquet` (~400.000 a 500.000 filas):** Subconjunto filtrado para análisis deportivo competitivo. Excluye a jugadores inactivos (`flag` con `'i'` o `'wi'`) y trunca edades inverosímiles (`edad <= 95`).
-
-### 4.3. Variables Principales
-
-| Campo | Tipo | Descripción |
-| :--- | :---: | :--- |
-| `fideid` | `int` | Identificador federativo unívoco de la FIDE. |
-| `name` | `string` | Nombre oficial registrado en el padrón federativo. |
-| `country` | `string` | Código de 3 letras de la federación (ej. `IND`, `RUS`, `ESP`, `CUB`). |
-| `sex` | `string` | Género del jugador (`M` o `F`). |
-| `title` | `string` | Título internacional absoluto (`GM`, `IM`, `FM`, `CM`, o `nt` para sin título). |
-| `w_title` | `string` | Título internacional femenino (`WGM`, `WIM`, `WFM`, `WCM` o `nt`). |
-| `o_title` | `string` | Otros títulos federativos oficiales (árbitros, instructores, etc.). |
-| `rating` | `float/int` | Elo oficial en ritmo Clásico. |
-| `rapid_rating` | `float/int` | Elo oficial en ritmo Rápido. |
-| `blitz_rating` | `float/int` | Elo oficial en ritmo Blitz (relámpago). |
-| `birthday` | `int` | Año de nacimiento declarado. |
-| `edad` | `int` | Variable derivada: año del snapshot menos `birthday`. |
-| `flag` | `string` | Banderas oficiales de la FIDE (ej. `a` para activo, `i` para inactivo, `w` para femenino). |
-| `es_activo` | `bool` | Booleano calculado (`True` si no contiene bandera de inactividad `'i'`). |
-| `categoria` | `string` | Cohorte etaria (Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-18, Sub-20, etc.). |
-
----
-
-## 5. Cuadernos de Análisis Exploratorio (EDA)
-
-El análisis exploratorio se encuentra dividido en etapas incrementales:
-
-1. **`00-limpieza.ipynb`**:
-   - Tratamiento de cadenas vacías y nulos en campos numéricos y categóricos.
-   - Normalización de títulos (`nt` para no titulados) y estatus federativo (`flag`).
-   - Depuración de registros centinelas (años de nacimiento anómalos `< 1920`).
-   - Exportación de los dos datasets curados (`fide_players_all.parquet` y `fide_players_active.parquet`).
-
-2. **`01-eda_general.ipynb`**:
-   - Comparación de curvas de densidad (KDE) entre ritmo Clásico, Rápido y Blitz.
-   - Concentración geográfica absoluta: identificación del Top 15 de federaciones con mayor volumen de afiliados.
-   - Estructura de títulos mundiales: análisis de la masa no titulada (96.8%) frente a titulados de élite (3.2%) y mapas de calor de cuota mundial por país.
-
-3. **`02-demografia_edad_genero.ipynb`**:
-   - Radiografía demográfica: cuantificación de la brecha de género (~90% masculino vs. ~10% femenino).
-   - Comportamiento de ratings segmentado por sexo.
-   - Creación de cohortes juveniles y análisis de la distribución de niños y adolescentes por federación.
-
----
-
-## 6. Investigación y Escalabilidad (`research/`)
-
-En el directorio `research/` se encuentran los análisis de ingeniería y metodología que fundamentan el proyecto:
-
-* **[ARQUITECTURA_Y_ESCALABILIDAD.md](research/ARQUITECTURA_Y_ESCALABILIDAD.md)**:
-  - **Diagnóstico del Snapshot Único:** Explica la limitación de sobreescribir el parquet bruto y define la transición hacia un modelo temporal basado en `(fideid, fecha_snapshot)`.
-  - **Captura de Cambios (CDC) y Deltas:** Menos del 8% de los jugadores mundiales cambian de rating en un mes dado. El documento plantea un motor incremental que calcule y persista únicamente las variaciones mensuales ($\Delta$ Elo, partidas jugadas, ascensos de título).
-  - **Escala de Datos:** Demuestra que 5 años de históricos completos de la FIDE representan menos de 2.5 GB en almacenamiento columnar comprimido; se clasifica el problema como *Medium Data* procesable en una sola máquina sin la sobrecarga de clústeres tipo Spark.
-  - **Arquitectura Core-First:** Diseñar la lógica como un motor analítico local desacoplado, permitiendo conectarle interfaces ligeras (CLI, Dashboards o API REST) sin duplicar código.
-
-* **[EVALUACION_NOTEBOOKS_Y_PREGUNTAS_INVESTIGACION.md](research/EVALUACION_NOTEBOOKS_Y_PREGUNTAS_INVESTIGACION.md)**:
-  - Evaluación crítica de sesgos metodológicos (e.g., descarte de 1.1M jugadores con Elo 0, sesgo de supervivencia en veteranos, sesgo por población absoluta de federaciones).
-  - Banco exhaustivo de preguntas de investigación agrupadas en 6 ejes: Ciclo de vida deportivo, Género y la hipótesis del tamaño de muestra (Chabris & Bilalić), Dinámica multimodal entre ritmos, Eficiencia formativa per cápita, Propiedades matemáticas del Elo y Calidad del padrón.
-
-* **[GUIA_02_DEMOGRAFIA_EDAD_GENERO.md](research/GUIA_02_DEMOGRAFIA_EDAD_GENERO.md)**:
-  - Checklist técnica paso a paso para el desarrollo del análisis demográfico y de género.
-
----
-
-## 7. Instalación y Puesta en Marcha
-
-### 7.1. Requisitos Previos
-* **Python:** `>= 3.9` (Recomendado: Python 3.10 o 3.11).
-* **Git** instalado.
-
-### 7.2. Configuración del Entorno
-
-1. **Clonar el repositorio:**
-   ```bash
-   git clone <url-del-repositorio>
-   cd Kepler-ChessAnalitic
-   ```
-
-2. **Crear y activar el entorno virtual:**
-   ```bash
-   # En Linux / macOS:
-   python3 -m venv .venv
-   source .venv/bin/activate
-
-   # En Windows:
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-
-3. **Configurar las variables de entorno:**
-   Crea o verifica el archivo `.env` en la raíz del proyecto:
-   ```ini
-   URL_DESCARGA="https://ratings.fide.com/download/players_list_xml.zip"
-   ```
-
-4. **Instalar dependencias del proyecto:**
-   ```bash
-   # Instalación base (pipeline y modelos):
-   pip install -e .
-
-   # Con soporte de desarrollo (Jupyter, pytest):
-   pip install -e ".[dev]"
-   ```
-
----
-
-## 8. Guía de Uso
-
-### 8.1. Ejecutar el Pipeline de Ingesta
-Para descargar los datos oficiales desde la FIDE y generar el archivo Parquet bruto:
 ```bash
-python src/main.py
-```
-*Si el archivo `players_list_xml.zip` ya existe en `data/raw/`, el downloader reutilizará la copia local evitando descargas innecesarias.*
-
-### 8.2. Trabajar con los Notebooks
-Para abrir y reproducir los análisis exploratorios:
-```bash
-jupyter lab
-# o bien:
-jupyter notebook
-```
-Abre los cuadernos en orden secuencial:
-1. `notebooks/00-limpieza.ipynb` (genera `data/processed/*.parquet`).
-2. `notebooks/01-eda_general.ipynb`.
-3. `notebooks/02-demografia_edad_genero.ipynb`.
-
-### 8.3. Ejecutar Pruebas
-```bash
+# Ejecutar todas las pruebas
 pytest
 ```
 
+```text
+tests/test_processing.py ..                                       [ 25%]
+tests/test_services.py ......                                     [100%]
+============================== 8 passed in 0.62s ===============================
+```
+
 ---
 
-## 9. Limitaciones Conocidas y Hoja de Ruta Inmediata
+## 6. Instalación y Uso Local
 
-Siendo honestos con el estado del código actual, existen puntos técnicos identificados para priorizar:
+### Requisitos
+* **Python:** `>= 3.10`
+* **Git**
 
-- [ ] **Desacoplar la limpieza de los notebooks:** Migrar la lógica de transformación y filtros de `00-limpieza.ipynb` a un controlador o procesador reutilizable dentro de `src/preprocessing/`.
-- [ ] **Implementar Tests Unitarios:** Construir tests unitarios en `tests/` con fixtures pequeñas de XML para validar `DataParser`, `FidePlayer` y `ParquetLoader`.
-- [ ] **Completar `UnivariateAnalyzer`:** Terminar los métodos de detección de *outliers* (IQR, Z-Score), pruebas de normalidad (D'Agostino-Pearson / Shapiro-Wilk) y corregir variables internas pendientes.
-- [ ] **Evolución a Particionado Temporal:** Modificar el destino de persistencia para guardar por snapshot (ej. `data/interim/year=2026/month=09/fide_players.parquet`) y dar soporte al cálculo de deltas mensuales.
+### 1. Clonar el repositorio y preparar entorno
+```bash
+git clone https://github.com/Entropy-v0/Kepler-ChessAnalytics.git
+cd Kepler-ChessAnalytics
+
+python3 -m venv .venv
+source .venv/bin/activate   # En Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 2. Ejecutar la Aplicación Web (Streamlit)
+```bash
+streamlit run app/main.py
+```
+*La aplicación abrirá en `http://localhost:8501` leyendo directamente la Capa Oro (`data/marts/`).*
+
+### 3. Ejecutar el Pipeline ETL (Opcional)
+Para reconstruir los datos desde el archivo oficial de la FIDE:
+```bash
+# Ejecutar todo el flujo (Ingesta -> Limpieza -> Features -> Data Marts)
+python src/main.py --step all
+
+# O ejecutar pasos específicos:
+python src/main.py --step marts       # Regenerar únicamente la Capa Oro
+python src/main.py --step clean       # Re-limpiar datos intermedios
+```
+
+---
+
+## 7. Hoja de Ruta Futura (Roadmap)
+
+- [x] Pipeline de streaming $O(1)$ para el padrón FIDE XML.
+- [x] Arquitectura Medallion Lakehouse completa (`Bronze -> Silver -> Gold`).
+- [x] Dashboard analítico interactivo de 6 páginas con Streamlit y Plotly.
+- [x] Reducción del payload WebSocket del histograma a 7.3 KB (-99.75 %).
+- [x] Aislamiento reactivo vía `@st.fragment` y caching estático `@st.cache_data`.
+- [ ] Particionado temporal por snapshots mensuales (`year=YYYY/month=MM/`).
+- [ ] Motor de Captura de Cambios (CDC) para deltas mensuales ($\Delta$ Elo, ascensos de título).
+- [ ] API REST en FastAPI para consultar estadísticas de jugadores federados en tiempo real.
+
+---
+
+## 8.  Créditos
+
+* **Datos Oficiales:** Padrón publicado por la [Federación Internacional de Ajedrez (FIDE)](https://ratings.fide.com/).
+

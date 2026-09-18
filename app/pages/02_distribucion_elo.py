@@ -17,12 +17,13 @@ from components.charts import (
 )
 from components.theme import render_page_header
 from service.elo_service import (
-    get_classic_ratings_series,
+    get_classic_histogram_data,
     get_elo_kpis,
     get_kde_data,
     get_title_structure_summary,
     get_titles_heatmap_data,
 )
+
 
 # ── Encabezado ─────────────────────────────────────────────────────────────────
 render_page_header("Distribución de Elo", "¿Cómo se mide y distribuye el nivel en el ajedrez mundial?")
@@ -50,33 +51,39 @@ st.divider()
 # ── Sección 2 — KDE Comparativo ───────────────────────────────────────────────
 st.markdown("### Densidad de ratings: Clásico vs Rápido vs Blitz")
 
-col_kde, col_ins = st.columns([3, 1])
+@st.fragment
+def render_kde_modalities_section() -> None:
+    col_kde, col_ins = st.columns([3, 1])
 
-with col_ins:
-    st.markdown("#### Filtrar modalidades")
-    show_classic = st.checkbox("Clásico", value=True)
-    show_rapid = st.checkbox("Rápido", value=True)
-    show_blitz = st.checkbox("Blitz", value=True)
-    st.markdown("---")
-    st.markdown("#### Hallazgo")
-    st.info(
-        "Las tres curvas **no coinciden**: el Rápido tiene la mediana más baja "
-        "(~1 635), seguido del Blitz (~1 688) y el Clásico (~1 707).\n\n"
-        "Esto refleja que muchos jugadores compiten en Rápido y Blitz sin haber "
-        "acumulado suficientes partidas Clásico para que su rating madure."
-    )
+    with col_ins:
+        st.markdown("#### Filtrar modalidades")
+        show_classic = st.checkbox("Clásico", value=True)
+        show_rapid = st.checkbox("Rápido", value=True)
+        show_blitz = st.checkbox("Blitz", value=True)
+        st.markdown("---")
+        st.markdown("#### Hallazgo")
+        st.info(
+            "Las tres curvas **no coinciden**: el Rápido tiene la mediana más baja "
+            "(~1 635), seguido del Blitz (~1 688) y el Clásico (~1 707).\n\n"
+            "Esto refleja que muchos jugadores compiten en Rápido y Blitz sin haber "
+            "acumulado suficientes partidas Clásico para que su rating madure."
+        )
 
-with col_kde:
-    kde_curves, p50_classic, y_p50 = get_kde_data(show_classic, show_rapid, show_blitz)
-    fig_kde = fig_kde_modalities(kde_curves, p50_classic, y_p50)
-    st.plotly_chart(fig_kde, key="kde_ratings")
+    with col_kde:
+        kde_curves, p50_classic, y_p50 = get_kde_data(show_classic, show_rapid, show_blitz)
+        fig_kde = fig_kde_modalities(kde_curves, p50_classic, y_p50)
+        st.plotly_chart(fig_kde, key="kde_ratings")
+
+
+render_kde_modalities_section()
+
 
 st.divider()
 
 # ── Sección 3 — Histograma + percentiles ──────────────────────────────────────
 st.markdown("### Histograma del rating Clásico con percentiles")
 
-classic_values = get_classic_ratings_series()
+hist_df, max_rating = get_classic_histogram_data()
 percs = {
     "P10": (kpis["p10"], "#48CAE4"),
     "P25": (kpis["p25"], "#2ECC71"),
@@ -86,13 +93,14 @@ percs = {
     "P99": (kpis["p99"], "#1C2333"),
 }
 
-fig_hist = fig_hist_classic_percentiles(classic_values, percs)
+fig_hist = fig_hist_classic_percentiles(hist_df, percs)
 st.plotly_chart(fig_hist, key="hist_classic")
 st.caption(
     f"Basado en {kpis['total_classic']:,} jugadores con rating Clásico > 0. "
-    f"Rango real: 1 400 – {int(classic_values.max()):,}. "
+    f"Rango real: 1 400 – {max_rating:,}. "
     "Bins de 20 puntos. Las líneas de percentiles muestran P10, P25, P50, P75, P90 y P99."
 )
+
 
 st.divider()
 

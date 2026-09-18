@@ -104,6 +104,7 @@ data/dataWeb/
 *.csv
 *.tsv
 *.parquet
+!data/marts/*.parquet
 *.h5
 *.sqlite
 *.db

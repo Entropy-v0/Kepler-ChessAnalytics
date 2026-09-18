@@ -5,10 +5,13 @@ Funciones de visualización reutilizables para toda la aplicación Kepler ChessA
 Cada función devuelve un objeto Plotly Figure listo para renderizar con st.plotly_chart().
 """
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
+
 
 from components.theme import (
     C_AMBER,
@@ -22,6 +25,7 @@ from components.theme import (
 )
 
 
+@st.cache_data
 def fig_bar_top_federations(fed_counts: pd.DataFrame) -> go.Figure:
     """Barras horizontales del Top N federaciones por volumen de jugadores."""
     fig = px.bar(
@@ -43,6 +47,7 @@ def fig_bar_top_federations(fed_counts: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=500, margin=dict(l=10, r=60, t=10, b=10))
 
 
+@st.cache_data
 def fig_map_world(map_data: pd.DataFrame) -> go.Figure:
     """Mapa de coropletas Natural Earth (Proyección Robinson)."""
     fig = go.Figure(
@@ -99,6 +104,7 @@ def fig_map_world(map_data: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=500, margin=dict(l=0, r=0, t=0, b=0))
 
 
+@st.cache_data
 def fig_kde_modalities(
     kde_curves: List[Tuple[str, List[float], List[float]]],
     p50_classic: int,
@@ -160,26 +166,41 @@ def fig_kde_modalities(
     return apply_plotly_theme(fig, height=380, hovermode="x unified")
 
 
+@st.cache_data
 def fig_hist_classic_percentiles(
-    classic_values: List[float],
+    hist_data: Union[pd.DataFrame, pd.Series, List[float]],
     percs: Dict[str, Tuple[int, str]],
 ) -> go.Figure:
-    """Histograma de Rating Clásico con anotaciones de percentiles."""
+    """
+    Histograma de Rating Clásico con anotaciones de percentiles.
+    Optimizado con go.Bar sobre bins precalculados (reduce el payload JSON de 3 MB a 1.8 KB).
+    """
+    if isinstance(hist_data, pd.DataFrame) and "bin_center" in hist_data.columns:
+        x_vals = hist_data["bin_center"].values
+        y_vals = hist_data["count"].values
+    else:
+        # Fallback de compatibilidad si se proporciona una Serie o lista de valores brutos
+        raw_vals = np.asarray(hist_data, dtype=float)
+        raw_vals = raw_vals[~np.isnan(raw_vals)]
+        bins = np.arange(1400, 2880 + 20, 20)
+        y_vals, bin_edges = np.histogram(raw_vals, bins=bins)
+        x_vals = (bin_edges[:-1] + bin_edges[1:]) / 2
+
     fig = go.Figure()
     fig.add_trace(
-        go.Histogram(
-            x=classic_values,
-            xbins=dict(start=1400, end=2860, size=20),
+        go.Bar(
+            x=x_vals,
+            y=y_vals,
             marker_color=C_LIGHT_BLUE,
             marker_line_color=C_NAVY,
             marker_line_width=0.4,
             opacity=0.85,
             name="Jugadores",
-            hovertemplate="Rating: %{x}<br>Jugadores: %{y:,}<extra></extra>",
+            hovertemplate="Rating: %{x:.0f}<br>Jugadores: %{y:,}<extra></extra>",
         )
     )
 
-    max_y = len(classic_values) * 0.08
+    max_y = float(np.max(y_vals)) * 1.15 if len(y_vals) > 0 and np.max(y_vals) > 0 else 1000.0
     for label, (val, color) in percs.items():
         fig.add_shape(
             type="line",
@@ -215,6 +236,8 @@ def fig_hist_classic_percentiles(
     return apply_plotly_theme(fig, height=380, showlegend=False)
 
 
+
+@st.cache_data
 def fig_bar_titles(titled_df: pd.DataFrame) -> go.Figure:
     """Barras horizontales del desglose de titulados."""
     bar_colors = [TITLE_COLORS.get(l, C_MUTED) for l in titled_df["label"]]
@@ -238,6 +261,7 @@ def fig_bar_titles(titled_df: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=320, showlegend=False)
 
 
+@st.cache_data
 def fig_heatmap_titles(heat_df: pd.DataFrame) -> go.Figure:
     """Heatmap de concentración de títulos de élite por federación."""
     fig = go.Figure(
@@ -271,6 +295,7 @@ def fig_heatmap_titles(heat_df: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=440, showlegend=False)
 
 
+@st.cache_data
 def fig_stacked_gender_federations(fed_sex: pd.DataFrame) -> go.Figure:
     """Barras apiladas horizontales de proporción de género por país."""
     fig = go.Figure()
@@ -307,6 +332,7 @@ def fig_stacked_gender_federations(fed_sex: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=540)
 
 
+@st.cache_data
 def fig_pyramid_categories(cat_df: pd.DataFrame) -> go.Figure:
     """Pirámide poblacional por categorías FIDE."""
     fig = go.Figure()
@@ -360,6 +386,7 @@ def fig_pyramid_categories(cat_df: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=450)
 
 
+@st.cache_data
 def fig_pyramid_ages(pyramid_age: pd.DataFrame) -> go.Figure:
     """Pirámide poblacional por rangos quinquenales de edad."""
     fig = go.Figure()
@@ -413,6 +440,7 @@ def fig_pyramid_ages(pyramid_age: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=580)
 
 
+@st.cache_data
 def fig_line_gender_drop(cat_df: pd.DataFrame, pct_f_global: float) -> go.Figure:
     """Gráfico de línea con la caída de cuota femenina por cohorte."""
     fig = go.Figure()
@@ -444,6 +472,7 @@ def fig_line_gender_drop(cat_df: pd.DataFrame, pct_f_global: float) -> go.Figure
     return apply_plotly_theme(fig, height=320, showlegend=False)
 
 
+@st.cache_data
 def fig_parity_federations(best_parity: pd.DataFrame, pct_f_global: float) -> go.Figure:
     """Barras de federaciones con mayor paridad de género."""
     fig = go.Figure()
@@ -476,6 +505,7 @@ def fig_parity_federations(best_parity: pd.DataFrame, pct_f_global: float) -> go
     return apply_plotly_theme(fig, height=380, showlegend=False)
 
 
+@st.cache_data
 def fig_youth_categories(cat_summary: pd.DataFrame) -> go.Figure:
     """Barras agrupadas de volumen juvenil por sexo."""
     fig = go.Figure()
@@ -511,6 +541,7 @@ def fig_youth_categories(cat_summary: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=420)
 
 
+@st.cache_data
 def fig_youth_elo_curves(df_elo: pd.DataFrame) -> go.Figure:
     """Evolución de la mediana de Elo por categoría juvenil."""
     fig = go.Figure()
@@ -558,6 +589,7 @@ def fig_youth_elo_curves(df_elo: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=380)
 
 
+@st.cache_data
 def fig_youth_elo_bands(df_elo: pd.DataFrame) -> go.Figure:
     """Banda de rendimiento central (IQR) y percentil P99 de élite."""
     fig = go.Figure()
@@ -610,6 +642,7 @@ def fig_youth_elo_bands(df_elo: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=380)
 
 
+@st.cache_data
 def fig_cantera_pct(top_cantera_pct: pd.DataFrame, pct_youth_global: float) -> go.Figure:
     """Barras horizontales de cuota juvenil por país."""
     fig = go.Figure()
@@ -642,6 +675,7 @@ def fig_cantera_pct(top_cantera_pct: pd.DataFrame, pct_youth_global: float) -> g
     return apply_plotly_theme(fig, height=400, showlegend=False)
 
 
+@st.cache_data
 def fig_cantera_vol(top_cantera_vol: pd.DataFrame) -> go.Figure:
     """Barras horizontales de volumen absoluto juvenil por país."""
     fig = go.Figure()
@@ -663,6 +697,7 @@ def fig_cantera_vol(top_cantera_vol: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=400, showlegend=False)
 
 
+@st.cache_data
 def fig_venezuela_modalities(n_classic: int, n_rapid: int, n_blitz: int, total_ven: int) -> go.Figure:
     """Barras comparativas de ritmos de juego en Venezuela."""
     fig = go.Figure()
@@ -688,6 +723,7 @@ def fig_venezuela_modalities(n_classic: int, n_rapid: int, n_blitz: int, total_v
     return apply_plotly_theme(fig, height=360, showlegend=False)
 
 
+@st.cache_data
 def fig_venezuela_hist(r_classic: pd.Series, r_rapid: pd.Series) -> go.Figure:
     """Histograma solapado de Elo Clásico vs Rápido en Venezuela."""
     fig = go.Figure()
@@ -719,6 +755,7 @@ def fig_venezuela_hist(r_classic: pd.Series, r_rapid: pd.Series) -> go.Figure:
     return apply_plotly_theme(fig, height=360)
 
 
+@st.cache_data
 def fig_venezuela_titles(df_titles_bar: pd.DataFrame) -> go.Figure:
     """Barras horizontales de títulos oficiales en Venezuela."""
     fig = go.Figure(
@@ -741,6 +778,7 @@ def fig_venezuela_titles(df_titles_bar: pd.DataFrame) -> go.Figure:
     return apply_plotly_theme(fig, height=320, showlegend=False)
 
 
+@st.cache_data
 def fig_venezuela_youth(ven_cats: pd.DataFrame) -> go.Figure:
     """Barras agrupadas por categoría formativa en Venezuela."""
     fig = go.Figure()

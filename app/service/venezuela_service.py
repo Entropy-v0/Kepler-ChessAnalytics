@@ -2,13 +2,17 @@
 app/service/venezuela_service.py
 ================================
 Servicio de datos analíticos para la página 05 — Venezuela.
+Consume los Data Marts precalculados (Capa Oro) y utiliza medianas mundiales dinámicas.
 """
 
 from typing import Any, Dict, Tuple
 import pandas as pd
 
 from components.theme import CAT_ORDER, YOUTH_CATS
-from service.data_loader import load_venezuela_players
+from service.data_loader import (
+    load_venezuela_players,
+    load_venezuela_comparativa_mart,
+)
 
 TITLES_ELITE = ["GM", "IM", "FM", "CM", "WGM", "WIM", "WFM", "WCM"]
 
@@ -51,7 +55,7 @@ def get_venezuela_kpis() -> Dict[str, Any]:
 
 
 def get_venezuela_elo_comparison() -> Tuple[pd.Series, pd.Series, pd.Series, pd.DataFrame]:
-    """Calcula las medianas comparativas de Venezuela vs el Mundo."""
+    """Calcula las medianas comparativas de Venezuela vs el Mundo (dinámicas desde Capa Oro)."""
     df_ven = load_venezuela_players()
     r_classic = df_ven[df_ven["rating"] > 0]["rating"].dropna().astype(float)
     r_rapid = df_ven[df_ven["rapid_rating"] > 0]["rapid_rating"].dropna().astype(float)
@@ -61,10 +65,31 @@ def get_venezuela_elo_comparison() -> Tuple[pd.Series, pd.Series, pd.Series, pd.
     med_rapid = int(r_rapid.median()) if len(r_rapid) > 0 else 0
     med_blitz = int(r_blitz.median()) if len(r_blitz) > 0 else 0
 
+    df_comp_world = load_venezuela_comparativa_mart()
+    row_world = df_comp_world.iloc[0]
+    world_classic = int(row_world["mediana_clasico_mundial"])
+    world_rapid = int(row_world["mediana_rapido_mundial"])
+    world_blitz = int(row_world["mediana_blitz_mundial"])
+
     comp_data = pd.DataFrame([
-        {"Ritmo": "Clásico", "Mediana VEN": f"{med_classic:,}", "Mediana Mundial": "1 707", "Diferencia": f"{med_classic - 1707:+d} pts"},
-        {"Ritmo": "Rápido",  "Mediana VEN": f"{med_rapid:,}",   "Mediana Mundial": "1 635", "Diferencia": f"{med_rapid - 1635:+d} pts"},
-        {"Ritmo": "Blitz",   "Mediana VEN": f"{med_blitz:,}",   "Mediana Mundial": "1 688", "Diferencia": f"{med_blitz - 1688:+d} pts"},
+        {
+            "Ritmo": "Clásico",
+            "Mediana VEN": f"{med_classic:,}",
+            "Mediana Mundial": f"{world_classic:,}",
+            "Diferencia": f"{med_classic - world_classic:+d} pts",
+        },
+        {
+            "Ritmo": "Rápido",
+            "Mediana VEN": f"{med_rapid:,}",
+            "Mediana Mundial": f"{world_rapid:,}",
+            "Diferencia": f"{med_rapid - world_rapid:+d} pts",
+        },
+        {
+            "Ritmo": "Blitz",
+            "Mediana VEN": f"{med_blitz:,}",
+            "Mediana Mundial": f"{world_blitz:,}",
+            "Diferencia": f"{med_blitz - world_blitz:+d} pts",
+        },
     ])
 
     return r_classic, r_rapid, r_blitz, comp_data
@@ -110,12 +135,14 @@ def get_venezuela_titles_summary() -> Tuple[Dict[str, Any], pd.DataFrame]:
     )
 
     kpis = {
+        "total_ven": total_ven,
         "sin_titulo_n": sin_titulo_ven,
         "sin_titulo_pct": sin_titulo_ven / total_ven * 100,
         "titulados_n": titulados_ven,
         "titulados_pct": titulados_ven / total_ven * 100,
         "gm_n": int((df_ven["title"] == "GM").sum()),
     }
+
 
     return kpis, df_titles_bar
 
@@ -174,5 +201,9 @@ def get_venezuela_youth_breakdown() -> pd.DataFrame:
         .reset_index()
     )
     ven_cats.columns.name = None
+    if "M" not in ven_cats.columns:
+        ven_cats["M"] = 0
+    if "F" not in ven_cats.columns:
+        ven_cats["F"] = 0
     ven_cats["total"] = ven_cats["M"] + ven_cats["F"]
     return ven_cats

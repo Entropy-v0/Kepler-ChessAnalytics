@@ -165,23 +165,29 @@ st.divider()
 # ── Sección 5 — Top Jugadores Venezolanos ─────────────────────────────────────
 st.markdown("### Cuadro de honor: Top jugadores de Venezuela")
 
-col_filter1, col_filter2, col_filter3, col_filter4 = st.columns(4)
-with col_filter1:
-    modality_choice = st.selectbox("Ordenar por ritmo:", ["Clásico", "Rápido", "Blitz"], key="ven_sort_mode")
-with col_filter2:
-    category_filter = st.selectbox(
-        "Filtrar por categoría:",
-        ["Todas", "Solo Juveniles (Sub-8 a Sub-20)", "Sub 8", "Sub 10", "Sub 12", "Sub 14", "Sub 16", "Sub 18", "Sub 20", "Absoluta"],
-        key="ven_cat_filter",
-    )
-with col_filter3:
-    sex_filter = st.selectbox("Filtrar por género:", ["Todos", "Masculino", "Femenino"], key="ven_sex_filter")
-with col_filter4:
-    title_filter = st.selectbox("Filtrar por estatus:", ["Todos", "Solo titulados", "Sin título"], key="ven_title_filter")
+@st.fragment
+def render_top_venezuelan_players_section() -> None:
+    col_filter1, col_filter2, col_filter3, col_filter4 = st.columns(4)
+    with col_filter1:
+        modality_choice = st.selectbox("Ordenar por ritmo:", ["Clásico", "Rápido", "Blitz"], key="ven_sort_mode")
+    with col_filter2:
+        category_filter = st.selectbox(
+            "Filtrar por categoría:",
+            ["Todas", "Solo Juveniles (Sub-8 a Sub-20)", "Sub 8", "Sub 10", "Sub 12", "Sub 14", "Sub 16", "Sub 18", "Sub 20", "Absoluta"],
+            key="ven_cat_filter",
+        )
+    with col_filter3:
+        sex_filter = st.selectbox("Filtrar por género:", ["Todos", "Masculino", "Femenino"], key="ven_sex_filter")
+    with col_filter4:
+        title_filter = st.selectbox("Filtrar por estatus:", ["Todos", "Solo titulados", "Sin título"], key="ven_title_filter")
 
-display_table = get_top_venezuelan_players(modality_choice, category_filter, sex_filter, title_filter)
-st.dataframe(display_table, hide_index=True, key="top_players_ven")
-st.caption(f"Mostrando los mejores {len(display_table)} jugadores según los filtros seleccionados.")
+    display_table = get_top_venezuelan_players(modality_choice, category_filter, sex_filter, title_filter)
+    st.dataframe(display_table, hide_index=True, key="top_players_ven")
+    st.caption(f"Mostrando los mejores {len(display_table)} jugadores según los filtros seleccionados.")
+
+
+render_top_venezuelan_players_section()
+
 
 st.divider()
 

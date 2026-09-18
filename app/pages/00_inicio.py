@@ -11,7 +11,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from components.kpis import render_global_kpis
 from components.theme import render_page_header
-from service.data_loader import load_active_players, load_all_players
+from service.data_loader import load_global_kpis_mart
 
 # ── Encabezado ─────────────────────────────────────────────────────────────────
 render_page_header(
@@ -32,11 +32,11 @@ st.divider()
 # ── Cifras hero del padrón ─────────────────────────────────────────────────────
 st.markdown("### El padrón mundial en cifras")
 try:
-    df_all = load_all_players()
-    df_active = load_active_players()
-    render_global_kpis(df_all, df_active)
+    df_kpis = load_global_kpis_mart()
+    render_global_kpis(df_kpis)
 except Exception:
     pass
+
 
 st.divider()
 

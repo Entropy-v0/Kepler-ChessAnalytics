@@ -2,12 +2,9 @@
 components/kpis.py
 ==================
 Widgets reutilizables para mostrar métricas destacadas (KPI cards).
-
-Uso:
-    from app.components.kpis import render_kpi_row
-    render_kpi_row(df)
 """
 
+import pandas as pd
 import streamlit as st
 
 
@@ -24,17 +21,18 @@ def metric_card(label: str, value: str, delta: str | None = None, help: str | No
     st.metric(label=label, value=value, delta=delta, help=help)
 
 
-def render_global_kpis(df_all, df_active) -> None:
+def render_global_kpis(df_kpis: pd.DataFrame) -> None:
     """
-    Muestra las 4 métricas globales principales en una fila de columnas.
+    Muestra las 4 métricas globales principales en una fila de columnas
+    consumiendo directamente el Data Mart precalculado (Capa Oro).
 
     Args:
-        df_all: DataFrame de todos los jugadores (fide_players_all).
-        df_active: DataFrame de jugadores activos (fide_players_active).
+        df_kpis: DataFrame unifilar con métricas precalculadas (mart_kpis_globales).
     """
-    total_players = len(df_all)
-    active_players = len(df_active)
-    total_countries = df_all["country"].nunique()
+    row = df_kpis.iloc[0]
+    total_players = int(row["total_players"])
+    active_players = int(row["active_players"])
+    total_countries = int(row["total_countries"])
     pct_active = f"{active_players / total_players * 100:.1f}%"
 
     c1, c2, c3, c4 = st.columns(4)

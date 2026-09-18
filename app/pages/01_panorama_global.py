@@ -95,26 +95,21 @@ st.divider()
 st.markdown(f"### Tabla detallada — Top {TOP_N} federaciones")
 
 
-def _highlight_50(row):
-    """Resalta en dorado la primera fila donde el acumulado supera el 50 %."""
-    prev_acc = fed_counts.loc[row.name - 1, "Acumulado %"] if row.name > 0 else 0
-    if prev_acc < 50 <= row["Acumulado %"]:
-        return ["background-color: rgba(200,155,60,0.22); font-weight:600"] * len(row)
-    return [""] * len(row)
-
-
-styled = (
-    fed_counts
-    .style
-    .apply(_highlight_50, axis=1)
-    .format({
-        "Jugadores":     "{:,}",
-        "% del mundial": "{:.1f} %",
-        "Acumulado %":   "{:.1f} %",
-    })
+st.dataframe(
+    fed_counts[["#", "Federación", "Jugadores", "% del mundial", "Acumulado %"]],
+    column_config={
+        "Jugadores": st.column_config.NumberColumn(format="%d"),
+        "% del mundial": st.column_config.ProgressColumn(
+            format="%.1f %%",
+            min_value=0,
+            max_value=15,
+        ),
+        "Acumulado %": st.column_config.NumberColumn(format="%.1f %%"),
+    },
+    hide_index=True,
+    key="table_fed",
 )
-
-st.dataframe(styled, key="table_fed", hide_index=True)
 st.caption(
-    "La fila resaltada marca el umbral donde el acumulado supera el 50 % del mundial."
+    "Top federaciones con barras de progreso relativas (% del mundial) y porcentaje acumulado."
 )
+

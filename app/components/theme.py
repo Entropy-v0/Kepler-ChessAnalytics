@@ -4,9 +4,11 @@ app/components/theme.py
 Constantes de diseño, paleta de colores y helpers de estilización unificados.
 """
 
-from typing import Any, Dict, List, Optional
-import plotly.graph_objects as go
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import streamlit as st
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 # ── Paleta de Colores Principal ────────────────────────────────────────────────
 C_NAVY = "#1E3A5F"         # Azul marino profundo (Clásico / Masculino / Primario)
@@ -67,12 +69,12 @@ def render_page_header(title: str, subtitle: str) -> None:
 
 
 def apply_plotly_theme(
-    fig: go.Figure,
+    fig: Any,
     height: int = 380,
     margin: Optional[Dict[str, int]] = None,
     showlegend: bool = True,
     hovermode: Optional[str] = None,
-) -> go.Figure:
+) -> Any:
     """
     Aplica el tema visual estandarizado del proyecto Kepler a cualquier gráfico de Plotly.
     """
