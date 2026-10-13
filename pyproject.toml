@@ -18,7 +18,8 @@ dependencies = [
     "python-dotenv",
     "seaborn",
     "scipy",
-    "matplotlib"
+    "matplotlib",
+    "pyarrow"
 ]
 
 [project.optional-dependencies]

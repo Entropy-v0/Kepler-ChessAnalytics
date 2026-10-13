@@ -2,6 +2,7 @@ import requests
 from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
+from datetime import datetime
 
 from src.config.settings import FIDE_DOWNLOAD_URL, DATA_RAW_DIR
 
@@ -24,7 +25,7 @@ class FideDownloader:
         self.url = url
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.filename = self.url.split("/")[-1]
+        self.filename = self.datetimeString() + '-' + self.url.split("/")[-1]
         self.output_path = self.output_dir / self.filename
 
     def download_data(self, force: bool = False) -> Path:
@@ -71,3 +72,10 @@ class FideDownloader:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al intentar descargar el archivo: {e}")
             raise
+
+    @staticmethod
+    def datetimeString() -> str:
+
+        now = datetime.now()
+        
+        return now.strftime("%Y-%m-%d")

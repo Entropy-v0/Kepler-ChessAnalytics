@@ -54,11 +54,9 @@ Kepler-ChessAnalitic/
 │       ├── jugadores_ajedrez_VEN.parquet
 │       └── ratings_globales.parquet
 │
-├── docs/                                # Documentación de Arquitectura y Referencia
-│   ├── 01_VISION_Y_ARQUITECTURA_ETL.md  # Visión del sistema y reglas de gobernanza
-│   ├── 02_DIAGNOSTICO_DEUDA_TECNICA.md  # Tracker de deuda técnica y cuellos de botella
-│   ├── 03_ESTRUCTURA_DIRECTORIOS.md     # Este documento (Árbol de directorios oficial)
-│   └── 04_ROADMAP_MIGRACION.md          # Fases secuenciales de implementación
+├── docs/                              # Documentación de Arquitectura y Referencia
+│   ├── VISION_Y_ARQUITECTURA_ETL.md   # Visión del sistema y reglas de gobernanza
+│   └──  ESTRUCTURA_DIRECTORIOS.md     # Este documento (Árbol de directorios oficial) 
 │
 ├── notebooks/                           # Entorno de Exploración e Investigación (EDA)
 │   ├── 00-limpieza.ipynb                # Exploración inicial de calidad y filtros
