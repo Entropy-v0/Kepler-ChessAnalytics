@@ -34,14 +34,14 @@ class FeatureBuilder:
         df_feat["edad"] = self.reference_year - df_feat["birthday"].astype(int)
 
         condiciones = [
-            (df_feat["edad"] > 0) & (df_feat["edad"] < 8),
-            (df_feat["edad"] >= 8) & (df_feat["edad"] < 10),
-            (df_feat["edad"] >= 10) & (df_feat["edad"] < 12),
-            (df_feat["edad"] >= 12) & (df_feat["edad"] < 14),
-            (df_feat["edad"] >= 14) & (df_feat["edad"] < 16),
-            (df_feat["edad"] >= 16) & (df_feat["edad"] < 18),
-            (df_feat["edad"] >= 18) & (df_feat["edad"] < 20),
-            (df_feat["edad"] >= 20),
+            (df_feat["edad"] > 0) & (df_feat["edad"] <= 8), # Sub 8
+            (df_feat["edad"] > 8) & (df_feat["edad"] <= 10), 
+            (df_feat["edad"] > 10) & (df_feat["edad"] <= 12), 
+            (df_feat["edad"] > 12) & (df_feat["edad"] <= 14),
+            (df_feat["edad"] > 14) & (df_feat["edad"] <= 16),
+            (df_feat["edad"] > 16) & (df_feat["edad"] <= 18),
+            (df_feat["edad"] > 18) & (df_feat["edad"] <= 20),
+            (df_feat["edad"] > 20), 
         ]
 
         df_feat["categoria"] = np.select(
