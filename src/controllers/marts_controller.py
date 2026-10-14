@@ -4,13 +4,15 @@ src/controllers/marts_controller.py
 Controlador para orquestar la generación de todos los Data Marts analíticos (Capa Oro).
 """
 
+from datetime import date
 from pathlib import Path
+from typing import Optional
 import pandas as pd
 from loguru import logger
 
 from src.config.settings import (
-    PROCESSED_ALL_PATH,
-    PROCESSED_ACTIVE_PATH,
+    PROCESSED_ALL_FILENAME,
+    PROCESSED_ACTIVE_FILENAME,
     DATA_MARTS_DIR,
 )
 from src.marts.global_marts import build_global_marts
@@ -18,6 +20,7 @@ from src.marts.elo_marts import build_elo_marts
 from src.marts.demographic_marts import build_demographic_marts
 from src.marts.youth_marts import build_youth_marts
 from src.marts.venezuela_marts import build_venezuela_marts
+from src.utils.snapshot import processed_dir
 
 
 class MartsController:
@@ -25,12 +28,15 @@ class MartsController:
 
     def __init__(
         self,
-        all_path: Path = PROCESSED_ALL_PATH,
-        active_path: Path = PROCESSED_ACTIVE_PATH,
+        snapshot: date,
+        all_path: Optional[Path] = None,
+        active_path: Optional[Path] = None,
         output_dir: Path = DATA_MARTS_DIR,
     ):
-        self.all_path = Path(all_path)
-        self.active_path = Path(active_path)
+        self.snapshot = snapshot
+        in_dir = processed_dir(snapshot)
+        self.all_path = Path(all_path) if all_path else in_dir / PROCESSED_ALL_FILENAME
+        self.active_path = Path(active_path) if active_path else in_dir / PROCESSED_ACTIVE_FILENAME
         self.output_dir = Path(output_dir)
 
     def run_pipeline(self) -> None:

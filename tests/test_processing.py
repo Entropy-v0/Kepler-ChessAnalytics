@@ -42,8 +42,45 @@ def test_feature_builder_categories_and_split():
     assert enriched.loc[enriched["fideid"] == "3", "categoria"].values[0] == "Sub 16"
     assert enriched.loc[enriched["fideid"] == "4", "categoria"].values[0] == "Absoluta"
     assert enriched.loc[enriched["fideid"] == "4", "es_activo"].values[0] == False
+    assert "flag" not in enriched.columns
 
     all_df, active_df = fb.split_datasets(enriched)
     assert len(all_df) == 5
     assert len(active_df) == 3
     assert set(active_df["fideid"]) == {"1", "2", "3"}
+
+
+def test_feature_builder_player_profile():
+    fb = FeatureBuilder(reference_year=2026)
+    data = pd.DataFrame([
+        {"fideid": "1", "birthday": 2000, "flag": "", "rating": 2100, "rapid_rating": 2050, "blitz_rating": 2000},
+        # 2. Especialista clásico: solo clásico
+        {"fideid": "2", "birthday": 2000, "flag": "", "rating": 1900, "rapid_rating": np.nan, "blitz_rating": None},
+        # 3. Especialista rápido: solo rápido
+        {"fideid": "3", "birthday": 2000, "flag": "", "rating": np.nan, "rapid_rating": 1850, "blitz_rating": np.nan},
+        # 4. Especialista blitz: solo blitz
+        {"fideid": "4", "birthday": 2000, "flag": "", "rating": None, "rapid_rating": None, "blitz_rating": 1700},
+        # 5. Clásico + Rápido
+        {"fideid": "5", "birthday": 2000, "flag": "", "rating": 2200, "rapid_rating": 2150, "blitz_rating": None},
+        # 6. Clásico + Blitz
+        {"fideid": "6", "birthday": 2000, "flag": "", "rating": 2300, "rapid_rating": np.nan, "blitz_rating": 2250},
+        # 7. Rápido + Blitz
+        {"fideid": "7", "birthday": 2000, "flag": "", "rating": None, "rapid_rating": 1600, "blitz_rating": 1650},
+    ])
+
+    enriched = fb.build_features(data)
+
+    # Validar la asignación de cada uno de los 7 perfiles
+    assert enriched.loc[enriched["fideid"] == "1", "player_profile"].values[0] == "completo"
+    assert enriched.loc[enriched["fideid"] == "2", "player_profile"].values[0] == "especialista_clasico"
+    assert enriched.loc[enriched["fideid"] == "3", "player_profile"].values[0] == "especialista_rapido"
+    assert enriched.loc[enriched["fideid"] == "4", "player_profile"].values[0] == "especialista_blitz"
+    assert enriched.loc[enriched["fideid"] == "5", "player_profile"].values[0] == "clasico_rapido"
+    assert enriched.loc[enriched["fideid"] == "6", "player_profile"].values[0] == "clasico_blitz"
+    assert enriched.loc[enriched["fideid"] == "7", "player_profile"].values[0] == "rapido_blitz"
+
+    # Validar tipo categórico ordenado y categorías oficiales
+    assert isinstance(enriched["player_profile"].dtype, pd.CategoricalDtype)
+    assert enriched["player_profile"].dtype.ordered is True
+    assert list(enriched["player_profile"].dtype.categories) == fb.ORDERED_PROFILE
+

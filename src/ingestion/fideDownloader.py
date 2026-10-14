@@ -1,10 +1,12 @@
 import requests
+from datetime import date
 from pathlib import Path
+from typing import Optional
 from loguru import logger
 from tqdm import tqdm
-from datetime import datetime
 
-from src.config.settings import FIDE_DOWNLOAD_URL, DATA_RAW_DIR
+from src.config.settings import FIDE_DOWNLOAD_URL
+from src.utils.snapshot import raw_dir
 
 
 class FideDownloader:
@@ -13,19 +15,29 @@ class FideDownloader:
 
     Recibe la URL como parámetro explícito (en vez de leerla internamente)
     para facilitar las pruebas y desacoplarla del sistema de configuración.
+
+    El archivo se guarda en `data/raw/<YYYY-MM>/<nombre original>` y se conserva
+    siempre, de modo que cada snapshot mantiene su fuente cruda.
     """
 
     DEFAULT_TIMEOUT = 30  # segundos
 
-    def __init__(self, url: str = FIDE_DOWNLOAD_URL, output_dir: Path = DATA_RAW_DIR):
+    def __init__(
+        self,
+        url: str = FIDE_DOWNLOAD_URL,
+        snapshot: Optional[date] = None,
+        output_dir: Optional[Path] = None,
+    ):
         if not url:
             logger.error("Se requiere una URL de descarga válida.")
             raise ValueError("URL de descarga no puede estar vacía.")
+        if snapshot is None and output_dir is None:
+            raise ValueError("Se requiere un snapshot (o un output_dir explícito).")
 
         self.url = url
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir) if output_dir is not None else raw_dir(snapshot)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.filename = self.datetimeString() + '-' + self.url.split("/")[-1]
+        self.filename = self.url.split("/")[-1]
         self.output_path = self.output_dir / self.filename
 
     def download_data(self, force: bool = False) -> Path:
@@ -72,10 +84,3 @@ class FideDownloader:
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al intentar descargar el archivo: {e}")
             raise
-
-    @staticmethod
-    def datetimeString() -> str:
-
-        now = datetime.now()
-        
-        return now.strftime("%Y-%m-%d")

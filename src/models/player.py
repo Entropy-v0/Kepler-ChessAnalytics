@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional, Any
 from pydantic import BaseModel, model_validator
 
@@ -14,6 +15,7 @@ class FidePlayer(BaseModel):
     blitz_rating: Optional[int] = None
     birthday: Optional[int] = None
     flag: Optional[str] = None
+    snapshot_date: date
 
     @model_validator(mode='before')
     @classmethod

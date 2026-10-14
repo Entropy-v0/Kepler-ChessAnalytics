@@ -21,9 +21,10 @@ DATA_INTERIM_DIR = ROOT_DIR / "data" / "interim"
 DATA_PROCESSED_DIR = ROOT_DIR / "data" / "processed"
 DATA_MARTS_DIR = ROOT_DIR / "data" / "marts"
 
-INTERIM_PARQUET_PATH = DATA_INTERIM_DIR / "fide_players_bruto.parquet"
-PROCESSED_ALL_PATH = DATA_PROCESSED_DIR / "fide_players_all.parquet"
-PROCESSED_ACTIVE_PATH = DATA_PROCESSED_DIR / "fide_players_active.parquet"
+# Nombres de archivo dentro de las carpetas por snapshot (ver src/utils/snapshot.py)
+INTERIM_FILENAME = "fide_players_bruto.parquet"
+PROCESSED_ALL_FILENAME = "fide_players_all.parquet"
+PROCESSED_ACTIVE_FILENAME = "fide_players_active.parquet"
 
 # Rutas de Data Marts (Capa Oro)
 MART_GLOBAL_PATH = DATA_MARTS_DIR / "mart_panorama_global.parquet"

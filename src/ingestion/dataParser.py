@@ -1,5 +1,6 @@
 import zipfile
 import xml.etree.ElementTree as ET
+from datetime import date
 from typing import Iterator, Dict, Any
 from loguru import logger
 from tqdm import tqdm
@@ -9,8 +10,9 @@ class DataParser:
     Clase encargada de la extracción (parsing) de los datos crudos de la FIDE en formato XML,
     manteniendo un bajo consumo de memoria mediante streaming.
     """
-    def __init__(self, zip_path: str):
+    def __init__(self, zip_path: str, snapshot: date):
         self.zip_path = zip_path
+        self.snapshot = snapshot
 
     def parse(self) -> Iterator[Dict[str, Any]]:
         logger.info(f"Abriendo archivo ZIP para extracción: {self.zip_path}")
@@ -28,6 +30,7 @@ class DataParser:
                             if elem.tag == 'player': 
                                 
                                 player_data = {
+                                    "snapshot_date": self.snapshot,
                                     "fideid": elem.findtext('fideid'),
                                     "name": elem.findtext('name'),
                                     "country": elem.findtext('country'),

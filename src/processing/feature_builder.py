@@ -20,6 +20,15 @@ class FeatureBuilder:
         "Sub 16", "Sub 18", "Sub 20", "Absoluta"
     ]
 
+    ORDERED_PROFILE: List[str] = [
+        "completo",
+        "especialista_clasico",
+        "especialista_rapido",
+        "especialista_blitz",
+        "clasico_rapido",
+        "clasico_blitz",
+        "rapido_blitz"]
+
     def __init__(self, reference_year: int = None):
         self.reference_year = reference_year or datetime.now().year
 
@@ -28,26 +37,57 @@ class FeatureBuilder:
         df_feat = df.copy()
         logger.info(f"Generando features con año de referencia {self.reference_year}...")
 
-        df_feat["flag"] = df_feat["flag"].fillna("").astype(str)
-        df_feat["es_activo"] = ~df_feat["flag"].isin(["i", "wi"])
+        if "flag" in df_feat.columns:
+            flag_str = df_feat["flag"].fillna("").astype(str).str.strip()
+            df_feat["es_activo"] = ~flag_str.isin(["i", "wi"])
+            df_feat = df_feat.drop(columns=["flag"])
+        else:
+            df_feat["es_activo"] = True
 
         df_feat["edad"] = self.reference_year - df_feat["birthday"].astype(int)
 
-        condiciones = [
+        condiciones_edad = [
             (df_feat["edad"] > 0) & (df_feat["edad"] <= 8), # Sub 8
-            (df_feat["edad"] > 8) & (df_feat["edad"] <= 10), 
-            (df_feat["edad"] > 10) & (df_feat["edad"] <= 12), 
-            (df_feat["edad"] > 12) & (df_feat["edad"] <= 14),
-            (df_feat["edad"] > 14) & (df_feat["edad"] <= 16),
-            (df_feat["edad"] > 16) & (df_feat["edad"] <= 18),
-            (df_feat["edad"] > 18) & (df_feat["edad"] <= 20),
-            (df_feat["edad"] > 20), 
+            (df_feat["edad"] > 8) & (df_feat["edad"] <= 10), # Sub 10
+            (df_feat["edad"] > 10) & (df_feat["edad"] <= 12), # Sub 12
+            (df_feat["edad"] > 12) & (df_feat["edad"] <= 14), # Sub 14
+            (df_feat["edad"] > 14) & (df_feat["edad"] <= 16), # Sub 16
+            (df_feat["edad"] > 16) & (df_feat["edad"] <= 18), # Sub 18
+            (df_feat["edad"] > 18) & (df_feat["edad"] <= 20), # Sub 20
+            (df_feat["edad"] > 20), # Absoluto
         ]
 
+        has_classic = df_feat["rating"].notna() if "rating" in df_feat.columns else pd.Series(False, index=df_feat.index)
+        has_rapid = df_feat["rapid_rating"].notna() if "rapid_rating" in df_feat.columns else pd.Series(False, index=df_feat.index)
+        has_blitz = df_feat["blitz_rating"].notna() if "blitz_rating" in df_feat.columns else pd.Series(False, index=df_feat.index)
+
+        condiciones_perfil = [
+            has_classic & has_rapid & has_blitz,          # completo
+            has_classic & ~has_rapid & ~has_blitz,        # especialista_clasico
+            ~has_classic & has_rapid & ~has_blitz,        # especialista_rapido
+            ~has_classic & ~has_rapid & has_blitz,        # especialista_blitz
+            has_classic & has_rapid & ~has_blitz,         # clasico_rapido
+            has_classic & ~has_rapid & has_blitz,         # clasico_blitz
+            ~has_classic & has_rapid & has_blitz,         # rapido_blitz
+        ]
+
+        df_feat["player_profile"] = np.select(
+            condiciones_perfil,
+            self.ORDERED_PROFILE,
+            default="sin_elo"
+        )
+
+        df_feat["player_profile"] = pd.Categorical(
+            df_feat["player_profile"],
+            categories=self.ORDERED_PROFILE,
+            ordered=True
+        )
+
+
         df_feat["categoria"] = np.select(
-            condiciones,
+            condiciones_edad,
             self.ORDERED_CATEGORIES,
-            default="Sin Categoría"
+            default="sin_categoría"
         )
 
         df_feat["categoria"] = pd.Categorical(
