@@ -124,3 +124,4 @@ Gracias a la refactorización a la arquitectura Medallion ya implementada en `sr
    * El código en `src/` permanece intacto.
    * La lógica de negocio encapsulada en `src/controllers/marts_controller.py` y `src/processing/` se reutiliza íntegramente.
    * El MVP en Streamlit puede mantenerse en paralelo para uso interno o demos rápidas mientras se desarrolla el frontend web definitivo.
+

@@ -9,13 +9,14 @@ from typing import List
 import numpy as np
 import pandas as pd
 from loguru import logger
+from src.config.constants import TITLES_COLUMNS, MIN_BIRTH_YEAR
 
 
 class DataCleaner:
     """Clase encargada de sanear y filtrar los datos brutos del archivo fide_players_bruto."""
 
-    TITLES_COLUMNS: List[str] = ["title", "w_title", "o_title"]
-    MIN_BIRTH_YEAR: int = 1920
+    TITLES_COLUMNS: List[str] = TITLES_COLUMNS
+    MIN_BIRTH_YEAR: int = MIN_BIRTH_YEAR
 
     def clean(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -41,29 +42,23 @@ class DataCleaner:
         df_clean = df[has_rating].copy()
         logger.info(f"Filtrados jugadores con al menos un rating activo: {len(df_clean):,}")
 
-        # 2. Reemplazar 0 por NaN en ratings
         for col in ["rating", "rapid_rating", "blitz_rating"]:
             if col in df_clean.columns:
                 df_clean[col] = df_clean[col].replace(0, np.nan)
 
-        # 3. Descartar registros sin birthday
         df_clean = df_clean.dropna(subset=["birthday"]).copy()
 
-        # Asegurar tipo entero en birthday
         df_clean["birthday"] = df_clean["birthday"].astype(int)
 
-        # 4. Descartar años de nacimiento imposibles (< 1920)
-        df_clean = df_clean[df_clean["birthday"] >= self.MIN_BIRTH_YEAR].copy()
+        df_clean = df_clean[df_clean["birthday"] >= MIN_BIRTH_YEAR].copy()
 
-        # 5. Imputar títulos nulos con 'nt' (y asegurar que las columnas existan)
-        for col in self.TITLES_COLUMNS:
+        for col in TITLES_COLUMNS:
             if col in df_clean.columns:
                 df_clean[col] = df_clean[col].fillna("nt").replace("", "nt")
             else:
                 df_clean[col] = "nt"
 
 
-        # 6. Deduplicar por fideid si existen colisiones
         dups = df_clean.duplicated(subset=["fideid"]).sum()
         if dups > 0:
             logger.warning(f"Se encontraron {dups} registros duplicados por fideid. Eliminando...")

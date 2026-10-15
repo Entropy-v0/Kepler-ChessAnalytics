@@ -84,3 +84,29 @@ def test_feature_builder_player_profile():
     assert enriched["player_profile"].dtype.ordered is True
     assert list(enriched["player_profile"].dtype.categories) == fb.ORDERED_PROFILE
 
+
+def test_constants_rules_consistency():
+    from src.config.constants import (
+        AGE_CATEGORY_RULES,
+        CAT_ORDER,
+        PLAYER_PROFILE_RULES,
+        PRO_ORDER,
+    )
+    fb = FeatureBuilder()
+    assert list(AGE_CATEGORY_RULES.values()) == CAT_ORDER
+    assert CAT_ORDER == fb.ORDERED_CATEGORIES
+    assert list(PLAYER_PROFILE_RULES.values()) == PRO_ORDER
+    assert PRO_ORDER == fb.ORDERED_PROFILE
+
+    for (min_age, max_age), cat_name in AGE_CATEGORY_RULES.items():
+        assert isinstance(min_age, int)
+        assert max_age is None or isinstance(max_age, int)
+        assert isinstance(cat_name, str)
+
+    for (c, r, b), prof_name in PLAYER_PROFILE_RULES.items():
+        assert isinstance(c, bool)
+        assert isinstance(r, bool)
+        assert isinstance(b, bool)
+        assert isinstance(prof_name, str)
+
+
