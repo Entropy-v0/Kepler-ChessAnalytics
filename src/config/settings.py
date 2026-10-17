@@ -25,6 +25,7 @@ DATA_MARTS_DIR = ROOT_DIR / "data" / "marts"
 INTERIM_FILENAME = "fide_players_bruto.parquet"
 PROCESSED_ALL_FILENAME = "fide_players_all.parquet"
 PROCESSED_ACTIVE_FILENAME = "fide_players_active.parquet"
+PROCESSED_REJECTED_FILENAME = "fide_players_rejected.parquet"
 
 # Rutas de Data Marts (Capa Oro)
 MART_GLOBAL_PATH = DATA_MARTS_DIR / "mart_panorama_global.parquet"

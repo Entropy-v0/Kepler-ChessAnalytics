@@ -10,6 +10,8 @@ from typing import Tuple
 import pandas as pd
 from loguru import logger
 
+from src.config.constants import RATING_COLS
+
 
 def build_venezuela_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     """
@@ -21,9 +23,8 @@ def build_venezuela_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
 
     # Copia de trabajo para cálculo estadístico
     df_calc = df_active.copy()
-    columnas_elo = ["rating", "rapid_rating", "blitz_rating"]
 
-    for col in columnas_elo:
+    for col in RATING_COLS:
         # Percentil relativo dentro de la categoría y país
         df_calc[f"percentil_{col}_local"] = df_calc.groupby(
             ["categoria", "country"], observed=True

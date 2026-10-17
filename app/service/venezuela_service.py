@@ -28,7 +28,7 @@ def get_venezuela_kpis() -> Dict[str, Any]:
     n_rapid = int((df_ven["rapid_rating"] > 0).sum())
     n_blitz = int((df_ven["blitz_rating"] > 0).sum())
 
-    df_titulados = df_ven[df_ven["title"].isin(TITLES_ELITE) | df_ven["w_title"].isin(TITLES_ELITE)]
+    df_titulados = df_ven[df_ven["title"].isin(TITLES_ELITE)]
     n_titulados = len(df_titulados)
     n_gm = int((df_ven["title"] == "GM").sum())
     n_im = int((df_ven["title"] == "IM").sum())
@@ -100,17 +100,7 @@ def get_venezuela_titles_summary() -> Tuple[Dict[str, Any], pd.DataFrame]:
     df_ven = load_venezuela_players().copy()
     total_ven = len(df_ven)
 
-    def _get_best_title(row):
-        t = str(row["title"])
-        wt = str(row["w_title"])
-        if t != "nt":
-            return t
-        if wt != "nt":
-            return wt
-        return "nt"
-
-    df_ven["best_title"] = df_ven.apply(_get_best_title, axis=1)
-    ven_titles_counts = df_ven["best_title"].value_counts()
+    ven_titles_counts = df_ven["title"].astype(str).value_counts()
 
     sin_titulo_ven = int(ven_titles_counts.get("nt", 0))
     titulados_ven = total_ven - sin_titulo_ven
@@ -118,9 +108,10 @@ def get_venezuela_titles_summary() -> Tuple[Dict[str, Any], pd.DataFrame]:
     title_names = {
         "GM": "Gran Maestro (GM)",
         "IM": "Maestro Internacional (IM)",
+        "WGM": "Gran Maestra Fem. (WGM)",
         "FM": "Maestro FIDE (FM)",
-        "CM": "Candidato a Maestro (CM)",
         "WIM": "Maestra Internacional Fem. (WIM)",
+        "CM": "Candidato a Maestro (CM)",
         "WFM": "Maestra FIDE Fem. (WFM)",
         "WCM": "Candidata a Maestra (WCM)",
     }
@@ -128,7 +119,7 @@ def get_venezuela_titles_summary() -> Tuple[Dict[str, Any], pd.DataFrame]:
     df_titles_bar = (
         pd.DataFrame([
             {"code": code, "label": title_names[code], "n": int(ven_titles_counts.get(code, 0))}
-            for code in ["GM", "WCM", "WIM", "WFM", "IM", "FM", "CM"]
+            for code in ["GM", "WGM", "WCM", "WIM", "WFM", "IM", "FM", "CM"]
             if int(ven_titles_counts.get(code, 0)) > 0
         ])
         .sort_values("n", ascending=True)
@@ -167,9 +158,9 @@ def get_top_venezuelan_players(
         df_table = df_table[df_table["sex"] == "F"]
 
     if title_filter == "Solo titulados":
-        df_table = df_table[df_table["title"].isin(TITLES_ELITE) | df_table["w_title"].isin(TITLES_ELITE)]
+        df_table = df_table[df_table["title"].isin(TITLES_ELITE)]
     elif title_filter == "Sin título":
-        df_table = df_table[(df_table["title"] == "nt") & (df_table["w_title"] == "nt")]
+        df_table = df_table[df_table["title"] == "nt"]
 
     sort_col = "rating" if modality_choice == "Clásico" else "rapid_rating" if modality_choice == "Rápido" else "blitz_rating"
     df_table = df_table[df_table[sort_col] > 0].sort_values(sort_col, ascending=False).head(20)
@@ -179,7 +170,6 @@ def get_top_venezuelan_players(
         "FIDE ID": df_table["fideid"].astype(str).values,
         "Nombre": df_table["name"].values,
         "Título": df_table["title"].astype(str).replace("nt", "—").values,
-        "Título Fem.": df_table["w_title"].astype(str).replace("nt", "—").values,
         "Elo Clásico": df_table["rating"].apply(lambda v: f"{v:,}" if pd.notna(v) and v > 0 else "—").values,
         "Elo Rápido": df_table["rapid_rating"].apply(lambda v: f"{v:,}" if pd.notna(v) and v > 0 else "—").values,
         "Elo Blitz": df_table["blitz_rating"].apply(lambda v: f"{v:,}" if pd.notna(v) and v > 0 else "—").values,

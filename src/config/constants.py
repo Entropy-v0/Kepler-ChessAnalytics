@@ -7,8 +7,18 @@ Constantes de negocio, clasificaciones FIDE y diccionarios de mapeo geográfico.
 from typing import Dict, List, Optional, Tuple
 
 
+RATING_COLS: Tuple[str, ...] = ("rating", "rapid_rating", "blitz_rating")
+GAMES_COLS: Tuple[str, ...] = ("games", "rapid_games", "blitz_games")
+MODALIDADES_MAP: Dict[str, str] = {
+    "rating": "Clásico",
+    "rapid_rating": "Rápido",
+    "blitz_rating": "Blitz",
+}
+
 TITLES_COLUMNS: List[str] = ["title", "w_title", "o_title"]
+INACTIVE_FLAGS: Tuple[str, ...] = ("i", "wi")
 MIN_BIRTH_YEAR: int = 1920
+MAX_ACTIVE_AGE: int = 95
 
 # ── Reglas de Categorías por Edad ──────────────────────────────────────────────
 AGE_CATEGORY_RULES: Dict[Tuple[int, Optional[int]], str] = {
@@ -34,19 +44,16 @@ PLAYER_PROFILE_RULES: Dict[Tuple[bool, bool, bool], str] = {
     (False, True, True): "rapido_blitz",
 }
 
-# Listas ordenadas derivadas directamente del orden de los diccionarios
+# Listas ordenadas derivadas directamente de las reglas (sin redundancia)
 CAT_ORDER: List[str] = list(AGE_CATEGORY_RULES.values())
+YOUTH_CATS: List[str] = [c for c in CAT_ORDER if c != "Absoluta"]
 PRO_ORDER: List[str] = list(PLAYER_PROFILE_RULES.values())
 
-
-YOUTH_CATS: List[str] = [
-    "Sub 8", "Sub 10", "Sub 12", "Sub 14",
-    "Sub 16", "Sub 18", "Sub 20"
-]
-
+# ── Jerarquía y Nombres de Títulos Oficiales FIDE ──────────────────────────────
 TITLES_ELITE: List[str] = ["GM", "IM", "WGM", "FM", "WIM", "CM", "WFM", "WCM"]
-
-TITLE_WOMAN: List[str] =  ["WGM", "WIM", "WFM", "WCM"]
+TITLES_OPEN_TOP: List[str] = ["GM", "IM", "FM"]
+TITLE_WOMAN: List[str] = [t for t in TITLES_ELITE if t.startswith("W")]
+TITLE_ORDER: List[str] = ["nt"] + TITLES_ELITE[::-1]
 
 TITLE_NAMES: Dict[str, str] = {
     "GM": "Gran Maestro",
@@ -60,6 +67,7 @@ TITLE_NAMES: Dict[str, str] = {
     "nt": "Sin título",
 }
 
+# ── Mapeo de Códigos FIDE a ISO-3 ──────────────────────────────────────────────
 FIDE_TO_ISO3: Dict[str, str] = {
     "ENG": "GBR", "SCO": "GBR", "WAL": "GBR", "NIR": "GBR",
     "IRI": "IRN", "GER": "DEU", "SUI": "CHE", "NED": "NLD",

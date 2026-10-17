@@ -39,10 +39,13 @@ class DataParser:
                                     "w_title": elem.findtext('w_title'),
                                     "o_title": elem.findtext('o_title'),
                                     "rating": elem.findtext('rating'),
+                                    "games": elem.findtext('games'),
                                     "rapid_rating": elem.findtext('rapid_rating'),
+                                    "rapid_games": elem.findtext('rapid_games'),
                                     "blitz_rating": elem.findtext('blitz_rating'),
+                                    "blitz_games": elem.findtext('blitz_games'),
                                     "birthday": elem.findtext('birthday'),
-                                    "flag": elem.findtext('flag')
+                                    "flag": elem.findtext('flag'),
                                 }
                                 
                                 yield player_data

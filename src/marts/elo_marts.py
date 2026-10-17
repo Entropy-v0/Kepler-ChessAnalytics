@@ -12,7 +12,7 @@ import pandas as pd
 from scipy.stats import gaussian_kde
 from loguru import logger
 
-from src.config.constants import TITLE_NAMES
+from src.config.constants import MODALIDADES_MAP, TITLE_NAMES, TITLES_OPEN_TOP
 
 
 SAMPLE_N = 60_000
@@ -52,11 +52,7 @@ def build_elo_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     y_p50 = float(kde_classic_full(p50_classic)[0])
 
     kde_records = []
-    modalidades = [
-        ("Clásico", df_all["rating"]),
-        ("Rápido", df_all["rapid_rating"]),
-        ("Blitz", df_all["blitz_rating"]),
-    ]
+    modalidades = [(label, df_all[col]) for col, label in MODALIDADES_MAP.items()]
 
     for name, series in modalidades:
         data = _sample(series, SAMPLE_N)
@@ -125,16 +121,15 @@ def build_elo_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     logger.success(f"Guardado {titulos_resumen_path.name}")
 
     # 5. Mart de Heatmap de Títulos por Federación
-    heatmap_titles = ["GM", "IM", "FM"]
     top_feds = (
-        df_all[df_all["title"].isin(heatmap_titles)]["country"]
+        df_all[df_all["title"].isin(TITLES_OPEN_TOP)]["country"]
         .value_counts()
         .head(30)
         .index.tolist()
     )
 
     heat_df = (
-        df_all[df_all["title"].isin(heatmap_titles) & df_all["country"].isin(top_feds)]
+        df_all[df_all["title"].isin(TITLES_OPEN_TOP) & df_all["country"].isin(top_feds)]
         .groupby(["country", "title"], observed=True)
         .size()
         .reset_index(name="n")
