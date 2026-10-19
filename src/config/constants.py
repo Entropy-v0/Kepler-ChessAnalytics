@@ -18,7 +18,7 @@ MODALIDADES_MAP: Dict[str, str] = {
 TITLES_COLUMNS: List[str] = ["title", "w_title", "o_title"]
 INACTIVE_FLAGS: Tuple[str, ...] = ("i", "wi")
 MIN_BIRTH_YEAR: int = 1920
-MAX_ACTIVE_AGE: int = 95
+MAX_ACTIVE_AGE: int = 97
 
 # ── Reglas de Categorías por Edad ──────────────────────────────────────────────
 AGE_CATEGORY_RULES: Dict[Tuple[int, Optional[int]], str] = {
