@@ -16,7 +16,6 @@ MODALIDADES_MAP: Dict[str, str] = {
 }
 
 TITLES_COLUMNS: List[str] = ["title", "w_title", "o_title"]
-INACTIVE_FLAGS: Tuple[str, ...] = ("i", "wi")
 MIN_BIRTH_YEAR: int = 1920
 MAX_ACTIVE_AGE: int = 97
 

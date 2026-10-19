@@ -13,7 +13,7 @@ from loguru import logger
 from src.config.constants import RATING_COLS
 
 
-def build_venezuela_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
+def build_venezuela_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     """
     Genera mart_venezuela.parquet y mart_venezuela_comparativa.parquet.
     Aplica cálculo estadístico robusto de percentiles y Z-Score basado en IQR por categoría.
@@ -22,7 +22,7 @@ def build_venezuela_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     logger.info("Generando Data Marts: Venezuela...")
 
     # Copia de trabajo para cálculo estadístico
-    df_calc = df_active.copy()
+    df_calc = df_all.copy()
 
     for col in RATING_COLS:
         # Percentil relativo dentro de la categoría y país
@@ -64,9 +64,9 @@ def build_venezuela_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     logger.success(f"Guardado {ven_path.name} ({len(df_ven):,} registros, {ven_path.stat().st_size:,} bytes)")
 
     # 2. Mart de Medianas Mundiales Dinámicas (reemplaza los valores hardcodeados '1 707', etc.)
-    r_classic_world = df_active[df_active["rating"] > 0]["rating"].dropna().astype(float)
-    r_rapid_world = df_active[df_active["rapid_rating"] > 0]["rapid_rating"].dropna().astype(float)
-    r_blitz_world = df_active[df_active["blitz_rating"] > 0]["blitz_rating"].dropna().astype(float)
+    r_classic_world = df_all[df_all["rating"] > 0]["rating"].dropna().astype(float)
+    r_rapid_world = df_all[df_all["rapid_rating"] > 0]["rapid_rating"].dropna().astype(float)
+    r_blitz_world = df_all[df_all["blitz_rating"] > 0]["blitz_rating"].dropna().astype(float)
 
     comp_world_df = pd.DataFrame([{
         "mediana_clasico_mundial": int(r_classic_world.median()) if len(r_classic_world) > 0 else 1707,

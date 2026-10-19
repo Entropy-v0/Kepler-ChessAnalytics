@@ -51,15 +51,7 @@ Por reglamento histórico de la FIDE, la bandera de inactividad (`i` / `wi`) se 
 * **Efecto estadístico (Caso Colombia vs. Mundo):**
   * Entre los jugadores con Elo Clásico, Colombia tiene una tasa de actividad de **`34.4%`** frente al **`39.3%`** mundial.
   * Sin embargo, como en Colombia el **`43.4%`** del padrón solo tiene Rápido/Blitz (frente al **`28.3%`** mundial), incluir a todos los de `<flag>` vacío sin filtro inflaría artificialmente la tasa de Colombia al `62.9%` (superando el `56.5%` mundial).
-* **Regla implementada en `FeatureBuilder` (`activo_fide`) y `Demografia.kpis_demograficos()`:**
-  1. **En `FeatureBuilder`:**
-     * Si el jugador **tiene Elo Clásico (`rating > 0`)**: se evalúa su `<flag>` oficial FIDE (`~flag.isin({'i', 'wi'})`).
-     * Si el jugador **solo tiene Rápido/Blitz (`rating.isna()`)**: como la FIDE no le audita el `<flag>`, no se le asume activo por defecto; se exige evidencia de partidas evaluadas (`activo_mes == True`, es decir `rapid_games + blitz_games > 0`).
-     ```python
-     activo_fide = np.where(has_classic, ~flag.isin({"i", "wi"}), activo_mes)
-     ```
-  2. **En `Demografia.kpis_demograficos()`:**
-     * Se reportan por separado el universo con Elo Clásico (`padron_clasico`, `activos_clasico_fide`, `inactivos_clasico_fide`), el universo sin Elo Clásico (`solo_rapido_blitz`), los activos verificados (`activos_fide`) y la actividad mensual (`activos_mes`).
+
 
 ### 3.2. Qué significan `<games>`, `<rapid_games>` y `<blitz_games>` (`activo_mes`)
 * **Representan partidas individuales evaluadas en el mes, NO torneos:** Indican cuántas partidas individuales computaron para el cálculo de Elo durante el período mensual de la lista (últimos 30 días).

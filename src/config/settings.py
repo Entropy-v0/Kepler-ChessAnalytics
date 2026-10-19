@@ -24,7 +24,6 @@ DATA_MARTS_DIR = ROOT_DIR / "data" / "marts"
 # Nombres de archivo dentro de las carpetas por snapshot (ver src/utils/snapshot.py)
 INTERIM_FILENAME = "fide_players_bruto.parquet"
 PROCESSED_ALL_FILENAME = "fide_players_all.parquet"
-PROCESSED_ACTIVE_FILENAME = "fide_players_active.parquet"
 PROCESSED_REJECTED_FILENAME = "fide_players_rejected.parquet"
 
 # Rutas de Data Marts (Capa Oro)

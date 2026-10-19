@@ -128,5 +128,8 @@ class DataCleaner:
                     out["sex"] = out["sex"].cat.add_categories(["F"])
                 out.loc[anomalia_sex, "sex"] = "F"
 
+        if "flag" in out.columns:
+            out = out.drop(columns=["flag"])
+
         return out
 

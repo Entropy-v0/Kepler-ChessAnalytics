@@ -60,14 +60,14 @@ def test_cleaner_title_fusion_and_sex_correction():
 
 
 
-def test_feature_builder_categories_and_split():
+def test_feature_builder_categories_and_monthly_activity():
     fb = FeatureBuilder(reference_year=2026)
     clean_data = pd.DataFrame([
-        {"fideid": "1", "birthday": 2020, "flag": "", "rating": 1200, "games": 5, "rapid_games": 0, "blitz_games": 0},   # edad = 6 -> Sub 8, activo
-        {"fideid": "2", "birthday": 2017, "flag": "", "rating": 1300, "games": 0, "rapid_games": 7, "blitz_games": 2},   # edad = 9 -> Sub 10, activo
-        {"fideid": "3", "birthday": 2011, "flag": "", "rating": 1400, "games": 0, "rapid_games": 0, "blitz_games": 0},   # edad = 15 -> Sub 16, activo
-        {"fideid": "4", "birthday": 2000, "flag": "i", "rating": 2000, "games": 0, "rapid_games": 0, "blitz_games": 0},  # edad = 26 -> Absoluta, inactivo
-        {"fideid": "5", "birthday": 1925, "flag": "", "rating": 1800, "games": 0, "rapid_games": 0, "blitz_games": 0},   # edad = 101 -> Absoluta, activo pero edad > 95
+        {"fideid": "1", "birthday": 2020, "flag": "", "rating": 1200, "games": 5, "rapid_games": 0, "blitz_games": 0},   # edad = 6 -> Sub 8, 5 partidas -> activo_mes=True
+        {"fideid": "2", "birthday": 2017, "flag": "", "rating": 1300, "games": 0, "rapid_games": 7, "blitz_games": 2},   # edad = 9 -> Sub 10, 9 partidas -> activo_mes=True
+        {"fideid": "3", "birthday": 2011, "flag": "", "rating": 1400, "games": 0, "rapid_games": 0, "blitz_games": 0},   # edad = 15 -> Sub 16, 0 partidas -> activo_mes=False
+        {"fideid": "4", "birthday": 2000, "flag": "i", "rating": 2000, "games": 0, "rapid_games": 0, "blitz_games": 0},  # edad = 26 -> Absoluta, 0 partidas -> activo_mes=False
+        {"fideid": "5", "birthday": 1925, "flag": "", "rating": 1800, "games": 0, "rapid_games": 0, "blitz_games": 1},   # edad = 101 -> Absoluta, 1 partida -> activo_mes=True
     ])
 
     enriched = fb.build_features(clean_data)
@@ -75,13 +75,19 @@ def test_feature_builder_categories_and_split():
     assert enriched.loc[enriched["fideid"] == "2", "categoria"].values[0] == "Sub 10"
     assert enriched.loc[enriched["fideid"] == "3", "categoria"].values[0] == "Sub 16"
     assert enriched.loc[enriched["fideid"] == "4", "categoria"].values[0] == "Absoluta"
-    assert enriched.loc[enriched["fideid"] == "4", "es_activo"].values[0] == False
-    assert "flag" not in enriched.columns
 
-    all_df, active_df = fb.split_datasets(enriched)
-    assert len(all_df) == 5
-    assert len(active_df) == 3
-    assert set(active_df["fideid"]) == {"1", "2", "3"}
+    assert enriched.loc[enriched["fideid"] == "1", "total_games"].values[0] == 5
+    assert enriched.loc[enriched["fideid"] == "2", "total_games"].values[0] == 9
+    assert enriched.loc[enriched["fideid"] == "3", "total_games"].values[0] == 0
+    assert enriched.loc[enriched["fideid"] == "5", "total_games"].values[0] == 1
+
+    assert bool(enriched.loc[enriched["fideid"] == "1", "activo_mes"].values[0]) is True
+    assert bool(enriched.loc[enriched["fideid"] == "2", "activo_mes"].values[0]) is True
+    assert bool(enriched.loc[enriched["fideid"] == "3", "activo_mes"].values[0]) is False
+    assert bool(enriched.loc[enriched["fideid"] == "4", "activo_mes"].values[0]) is False
+    assert bool(enriched.loc[enriched["fideid"] == "5", "activo_mes"].values[0]) is True
+    assert "flag" not in enriched.columns
+    assert "es_activo" not in enriched.columns
 
 
 def test_feature_builder_player_profile():
@@ -195,10 +201,7 @@ def test_demografia_and_rankings_analytics_engines():
     titles_df = ven_demo.resumen_titulos().set_index("title")
     assert titles_df.loc["GM", "total"] == 1
     assert titles_df.loc["WFM", "F"] == 1
-
-    comp_feds = Demografia.comparar_federaciones(df_all, ["VEN", "COL"])
-    assert list(comp_feds["country"]) == ["VEN", "COL"]
-    assert len(comp_feds) == 2
+    assert df_kpis.loc["activos_mes", "cantidad"] == 2
 
     # 2. Estudio de Rankings y Elo por país y global (Rankings)
     ven_rank = Rankings(df_all, "ven")

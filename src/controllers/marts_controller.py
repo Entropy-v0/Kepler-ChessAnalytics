@@ -12,7 +12,6 @@ from loguru import logger
 
 from src.config.settings import (
     PROCESSED_ALL_FILENAME,
-    PROCESSED_ACTIVE_FILENAME,
     DATA_MARTS_DIR,
 )
 from src.marts.global_marts import build_global_marts
@@ -30,39 +29,34 @@ class MartsController:
         self,
         snapshot: date,
         all_path: Optional[Path] = None,
-        active_path: Optional[Path] = None,
         output_dir: Path = DATA_MARTS_DIR,
     ):
         self.snapshot = snapshot
         in_dir = processed_dir(snapshot)
         self.all_path = Path(all_path) if all_path else in_dir / PROCESSED_ALL_FILENAME
-        self.active_path = Path(active_path) if active_path else in_dir / PROCESSED_ACTIVE_FILENAME
         self.output_dir = Path(output_dir)
 
     def run_pipeline(self) -> None:
         """Ejecuta la generación batch de todos los Data Marts."""
         logger.info("[Kepler ChessAnalitic - Pipeline de Data Marts (Capa Oro)]")
 
-        if not self.all_path.exists() or not self.active_path.exists():
+        if not self.all_path.exists():
             raise FileNotFoundError(
-                f"Archivos procesados no encontrados en {self.all_path} o {self.active_path}. "
+                f"Archivo procesado no encontrado en {self.all_path}. "
                 "Ejecute primero la fase de procesamiento."
             )
 
         logger.info(f"Cargando dataset maestro general desde {self.all_path}...")
         df_all = pd.read_parquet(self.all_path)
 
-        logger.info(f"Cargando dataset maestro activo desde {self.active_path}...")
-        df_active = pd.read_parquet(self.active_path)
-
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generar cada Data Mart
-        build_global_marts(df_all, df_active, self.output_dir)
+        build_global_marts(df_all, self.output_dir)
         build_elo_marts(df_all, self.output_dir)
-        build_demographic_marts(df_active, self.output_dir)
-        build_youth_marts(df_active, self.output_dir)
-        build_venezuela_marts(df_active, self.output_dir)
+        build_demographic_marts(df_all, self.output_dir)
+        build_youth_marts(df_all, self.output_dir)
+        build_venezuela_marts(df_all, self.output_dir)
 
         # Balance de archivos generados
         logger.info("=== Balance de Data Marts Generados ===")

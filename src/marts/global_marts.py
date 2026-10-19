@@ -13,13 +13,13 @@ from loguru import logger
 from src.config.constants import FIDE_TO_ISO3
 
 
-def build_global_marts(df_all: pd.DataFrame, df_active: pd.DataFrame, output_dir: Path) -> None:
+def build_global_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     """Genera mart_kpis_globales.parquet y mart_panorama_global.parquet."""
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generando Data Marts: Panorama Global...")
 
     total_players = len(df_all)
-    active_players = len(df_active)
+    active_players = int(df_all["activo_mes"].sum()) if "activo_mes" in df_all.columns else total_players
     total_countries = int(df_all["country"].nunique())
 
     # 1. Mart de KPIs Globales (1 sola fila)

@@ -122,8 +122,3 @@ def load_all_players() -> pd.DataFrame:
     """Dataset completo maestro de jugadores FIDE (~776K)."""
     return pd.read_parquet(_PROCESSED / "fide_players_all.parquet")
 
-
-@st.cache_data(show_spinner="Cargando jugadores activos maestro…")
-def load_active_players() -> pd.DataFrame:
-    """Subconjunto maestro de jugadores activos (~437K)."""
-    return pd.read_parquet(_PROCESSED / "fide_players_active.parquet")

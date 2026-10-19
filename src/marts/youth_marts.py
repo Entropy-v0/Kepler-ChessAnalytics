@@ -13,13 +13,13 @@ from loguru import logger
 from src.config.constants import YOUTH_CATS
 
 
-def build_youth_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
+def build_youth_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     """Genera los Data Marts para el ajedrez juvenil y formativo."""
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generando Data Marts: Cohortes Juveniles...")
 
-    df_youth = df_active[df_active["categoria"].isin(YOUTH_CATS)].copy()
-    total_active = len(df_active)
+    df_youth = df_all[df_all["categoria"].isin(YOUTH_CATS)].copy()
+    total_active = len(df_all)
     total_youth = len(df_youth)
     pct_youth_global = total_youth / total_active * 100
 
@@ -92,7 +92,7 @@ def build_youth_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     # 4. Canteras Mundiales (Porcentaje y Volumen)
     # Genera la matriz porcentual de categorías por federación (corrige cateogrias_juveniles_fed)
     ctab = (
-        df_active.groupby(["country", "categoria"], observed=True)
+        df_all.groupby(["country", "categoria"], observed=True)
         .size()
         .unstack(fill_value=0)
     )

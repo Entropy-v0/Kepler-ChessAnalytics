@@ -5,6 +5,7 @@ Estudio demográfico y estructural de una federación del padrón FIDE:
 volumen de jugadores, género, categorías formativas, perfiles de ritmo y títulos.
 """
 
+from typing import Optional
 import numpy as np
 import pandas as pd
 
@@ -28,22 +29,25 @@ def _pct(num: float, den: float, decimals: int = 1) -> float:
 
 class DemografiaFederacion:
     """
-    Analizador demográfico de una federación.
+    Analizador demográfico de una federación (o del padrón global si `fed=None`).
 
     Uso: `DemografiaFederacion(df, "COL").kpis_demograficos()`
     """
 
-    def __init__(self, df: pd.DataFrame, fed: str, max_age: int = MAX_ACTIVE_AGE):
+    def __init__(self, df: pd.DataFrame, fed: Optional[str] = None, max_age: int = MAX_ACTIVE_AGE):
         missing = REQUIRED_DEMOGRAPHIC_COLS - set(df.columns)
         if missing:
             raise ValueError(
                 f"El DataFrame no contiene las columnas requeridas: {sorted(missing)}"
             )
 
-        self.fed = fed.strip().upper()
+        self.fed = fed.strip().upper() if fed else None
         self.max_age = max_age
 
-        mask = (df["country"] == self.fed) & (df["edad"] <= max_age)
+        if self.fed is not None:
+            mask = (df["country"] == self.fed) & (df["edad"] <= max_age)
+        else:
+            mask = df["edad"] <= max_age
         self.df: pd.DataFrame = df.loc[mask].copy()
 
         if self.df.empty:
@@ -71,6 +75,8 @@ class DemografiaFederacion:
             "titulados": n_titulados,
             "sin_titulo": n_reg - n_titulados,
         }
+        if "activo_mes" in df.columns:
+            cantidad["activos_mes"] = int(df["activo_mes"].sum())
 
         # Denominador de cada porcentaje (por defecto, el total de registrados)
         denominadores = {
@@ -145,3 +151,6 @@ class DemografiaFederacion:
         out.index.name = "title"
 
         return out.loc[out["total"] > 0, cols[1:]].reset_index()
+
+
+Demografia = DemografiaFederacion

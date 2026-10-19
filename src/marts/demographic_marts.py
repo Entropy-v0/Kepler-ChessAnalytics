@@ -12,23 +12,23 @@ from loguru import logger
 from src.config.constants import CAT_ORDER
 
 
-def build_demographic_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
+def build_demographic_marts(df_all: pd.DataFrame, output_dir: Path) -> None:
     """Genera los Data Marts para demografía y análisis de género."""
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Generando Data Marts: Demografía y Género...")
 
-    total = len(df_active)
-    n_m = int((df_active["sex"] == "M").sum())
-    n_f = int((df_active["sex"] == "F").sum())
+    total = len(df_all)
+    n_m = int((df_all["sex"] == "M").sum())
+    n_f = int((df_all["sex"] == "F").sum())
     pct_m = n_m / total * 100
     pct_f = n_f / total * 100
 
-    df_youth = df_active[df_active["categoria"] != "Absoluta"]
+    df_youth = df_all[df_all["categoria"] != "Absoluta"]
     n_youth = len(df_youth)
     pct_youth = n_youth / total * 100
     pct_f_youth = (df_youth["sex"] == "F").mean() * 100
 
-    df_adult = df_active[df_active["categoria"] == "Absoluta"]
+    df_adult = df_all[df_all["categoria"] == "Absoluta"]
     pct_f_adult = (df_adult["sex"] == "F").mean() * 100
 
     # 1. KPIs Demográficos
@@ -48,9 +48,9 @@ def build_demographic_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     logger.success(f"Guardado {kpis_path.name}")
 
     # 2. Ratio de Género por Federaciones (Top 50)
-    top_feds = df_active["country"].value_counts().head(50).index.tolist()
+    top_feds = df_all["country"].value_counts().head(50).index.tolist()
     fed_sex = (
-        df_active[df_active["country"].isin(top_feds)]
+        df_all[df_all["country"].isin(top_feds)]
         .groupby(["country", "sex"], observed=True)
         .size()
         .unstack(fill_value=0)
@@ -72,7 +72,7 @@ def build_demographic_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
 
     # 3. Estructura por Categorías FIDE
     cat_df = (
-        df_active.groupby(["categoria", "sex"], observed=True)
+        df_all.groupby(["categoria", "sex"], observed=True)
         .size()
         .unstack(fill_value=0)
         .reindex(CAT_ORDER)
@@ -95,7 +95,7 @@ def build_demographic_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
     age_bins = list(range(0, 100, 5)) + [100]
     age_labels = [f"{i}–{i+4}" for i in range(0, 95, 5)] + ["95+"]
 
-    df_copy = df_active[["edad", "sex"]].copy()
+    df_copy = df_all[["edad", "sex"]].copy()
     df_copy["age_bin"] = pd.cut(df_copy["edad"], bins=age_bins, labels=age_labels, right=False)
 
     pyramid_age = (
@@ -114,7 +114,7 @@ def build_demographic_marts(df_active: pd.DataFrame, output_dir: Path) -> None:
 
     # 5. Paridad por País (Mínimo 500 jugadores)
     fed_all = (
-        df_active.groupby(["country", "sex"], observed=True)
+        df_all.groupby(["country", "sex"], observed=True)
         .size()
         .unstack(fill_value=0)
         .reset_index()
